@@ -1,37 +1,47 @@
-VoidRay 2D Game Engine
-======================
+# VoidRay 2D Game Engine
 
-A lightweight, easy-to-use 2D game engine built with Python and Pygame.
+A lightweight and beginner-friendly 2D game engine built with **Python** and **Pygame**.
 
-VERSION: 1.0.0
-LICENSE: Open Source
-AUTHOR: VoidRay Development Team
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![License](https://img.shields.io/badge/license-GPL--3.0-red)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
-DESCRIPTION
------------
-VoidRay is a simple yet powerful 2D game engine designed for rapid prototyping and learning game development. Built on top of Pygame, it provides a clean, object-oriented framework for creating 2D games with minimal boilerplate code.
+---
 
-FEATURES
---------
-✓ Core 2D rendering system with sprite support
-✓ Comprehensive input handling (keyboard, mouse)
-✓ Physics system with collision detection
-✓ Audio system for sound effects and music
-✓ Scene management for organizing game states
-✓ Asset loading and caching system
-✓ Mathematical utilities (Vector2, Transform)
-✓ Cross-platform compatibility (Windows, macOS, Linux)
-✓ No external editor required - pure code approach
-✓ Extensive documentation and examples
+## 🚀 About
 
-QUICK START
------------
-1. Install Python 3.8+ and Pygame:
-   pip install pygame
+**VoidRay** is a clean and minimal 2D game engine designed for rapid development and learning. It’s built with Python and Pygame and offers the essential components to start building 2D games right away — without needing a visual editor.
 
-2. Create your first game:
+VoidRay is fully open-source under the **GNU General Public License v3.0 (GPL-3.0)**, encouraging freedom to study, modify, and distribute.
 
-```python
+---
+
+## ✨ Features
+
+- ✅ Basic 2D rendering system with sprite support
+- ✅ Keyboard and mouse input handling
+- ✅ Physics and collision system
+- ✅ Scene and game state management
+- ✅ Audio playback (music & sound effects)
+- ✅ Vector math utilities (`Vector2`, `Transform`)
+- ✅ Asset loading and caching
+- ✅ Pure code workflow – no editor required
+- ✅ Cross-platform (Windows, macOS, Linux)
+- ✅ Beginner-friendly examples and docs
+
+---
+
+## 📦 Installation
+
+Requires **Python 3.8+** and [Pygame](https://www.pygame.org/).
+
+```bash
+pip install pygame
+
+---
+
+## 🕹 Quick Start
+
 from voidray import Engine, Scene, Sprite, Vector2
 from voidray.graphics.renderer import Color
 
