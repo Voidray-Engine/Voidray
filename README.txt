@@ -4,7 +4,6 @@ A lightweight and beginner-friendly 2D game engine built with **Python** and **P
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![License](https://img.shields.io/badge/license-GPL--3.0-red)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
 ---
 
@@ -59,3 +58,5 @@ class GameScene(Scene):
 engine = Engine(800, 600, "My Game")
 engine.set_scene(GameScene())
 engine.run()
+
+---
