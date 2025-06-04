@@ -21,6 +21,12 @@ class PhysicsEngine:
         self.colliders: List[Collider] = []
         self.collision_callbacks: List[Callable[[Collider, Collider], None]] = []
         
+        # Spatial partitioning for better performance
+        self.grid_size = 64  # Size of each grid cell
+        self.spatial_grid = {}  # Dictionary to store colliders by grid position
+        self.frame_count = 0
+        self.optimization_enabled = True
+        
     def add_collider(self, collider: Collider):
         """
         Add a collider to the physics simulation.
@@ -49,6 +55,45 @@ class PhysicsEngine:
             callback: Function to call with (collider1, collider2) parameters
         """
         self.collision_callbacks.append(callback)
+    
+    def _get_grid_key(self, position: Vector2) -> tuple:
+        """
+        Get grid key for spatial partitioning.
+        
+        Args:
+            position: World position
+            
+        Returns:
+            Grid key as tuple
+        """
+        return (int(position.x // self.grid_size), int(position.y // self.grid_size))
+    
+    def _update_spatial_grid(self):
+        """
+        Update spatial partitioning grid.
+        """
+        if not self.optimization_enabled:
+            return
+            
+        self.spatial_grid.clear()
+        
+        for collider in self.colliders:
+            if collider.game_object and collider.game_object.active:
+                pos = collider.get_world_position()
+                radius = collider.get_bounds_radius()
+                
+                # Add to multiple grid cells if collider spans them
+                min_x = int((pos.x - radius) // self.grid_size)
+                max_x = int((pos.x + radius) // self.grid_size)
+                min_y = int((pos.y - radius) // self.grid_size)
+                max_y = int((pos.y + radius) // self.grid_size)
+                
+                for gx in range(min_x, max_x + 1):
+                    for gy in range(min_y, max_y + 1):
+                        key = (gx, gy)
+                        if key not in self.spatial_grid:
+                            self.spatial_grid[key] = []
+                        self.spatial_grid[key].append(collider)
     
     def update(self, delta_time: float):
         """
@@ -90,35 +135,69 @@ class PhysicsEngine:
         """
         Check for collisions between all colliders.
         """
-        for i in range(len(self.colliders)):
-            for j in range(i + 1, len(self.colliders)):
-                collider1 = self.colliders[i]
-                collider2 = self.colliders[j]
+        # Update spatial grid every few frames for performance
+        if self.frame_count % 3 == 0:
+            self._update_spatial_grid()
+        self.frame_count += 1
+        
+        checked_pairs = set()
+        
+        if self.optimization_enabled and self.spatial_grid:
+            # Use spatial partitioning
+            for colliders_in_cell in self.spatial_grid.values():
+                for i in range(len(colliders_in_cell)):
+                    for j in range(i + 1, len(colliders_in_cell)):
+                        collider1 = colliders_in_cell[i]
+                        collider2 = colliders_in_cell[j]
+                        
+                        # Avoid checking the same pair twice
+                        pair = (min(id(collider1), id(collider2)), max(id(collider1), id(collider2)))
+                        if pair in checked_pairs:
+                            continue
+                        checked_pairs.add(pair)
+                        
+                        self._process_collision_pair(collider1, collider2)
+        else:
+            # Fallback to brute force
+            for i in range(len(self.colliders)):
+                for j in range(i + 1, len(self.colliders)):
+                    collider1 = self.colliders[i]
+                    collider2 = self.colliders[j]
+                    self._process_collision_pair(collider1, collider2)
+    
+    def _process_collision_pair(self, collider1: Collider, collider2: Collider):
+        """
+        Process a potential collision between two colliders.
+        
+        Args:
+            collider1: First collider
+            collider2: Second collider
+        """
                 
                 # Skip if both are static
-                if collider1.is_static and collider2.is_static:
-                    continue
-                
-                # Skip if either object is inactive
-                if (not collider1.game_object or not collider1.game_object.active or
-                    not collider2.game_object or not collider2.game_object.active):
-                    continue
-                
-                # Check collision
-                if self._check_collision(collider1, collider2):
-                    # Call collision callbacks
-                    for callback in self.collision_callbacks:
-                        callback(collider1, collider2)
-                    
-                    # Call individual collider callbacks
-                    if collider1.on_collision:
-                        collider1.on_collision(collider2)
-                    if collider2.on_collision:
-                        collider2.on_collision(collider1)
-                    
-                    # Resolve collision if needed
-                    if not collider1.is_trigger and not collider2.is_trigger:
-                        self._resolve_collision(collider1, collider2)
+        if collider1.is_static and collider2.is_static:
+            return
+        
+        # Skip if either object is inactive
+        if (not collider1.game_object or not collider1.game_object.active or
+            not collider2.game_object or not collider2.game_object.active):
+            return
+        
+        # Check collision
+        if self._check_collision(collider1, collider2):
+            # Call collision callbacks
+            for callback in self.collision_callbacks:
+                callback(collider1, collider2)
+            
+            # Call individual collider callbacks
+            if collider1.on_collision:
+                collider1.on_collision(collider2)
+            if collider2.on_collision:
+                collider2.on_collision(collider1)
+            
+            # Resolve collision if needed
+            if not collider1.is_trigger and not collider2.is_trigger:
+                self._resolve_collision(collider1, collider2)
     
     def _check_collision(self, collider1: Collider, collider2: Collider) -> bool:
         """

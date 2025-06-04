@@ -55,6 +55,15 @@ class Engine:
         self.current_scene: Optional[Scene] = None
         self.delta_time = 0.0
         
+        # Enhanced features
+        self.enable_vsync = True
+        self.performance_stats = {
+            'fps': 0.0,
+            'frame_time': 0.0,
+            'objects_rendered': 0,
+            'collisions_checked': 0
+        }
+        
         print(f"VoidRay Engine initialized: {width}x{height} @ {fps}fps")
     
     def set_scene(self, scene: Scene):

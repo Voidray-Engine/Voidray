@@ -412,24 +412,36 @@ class SpaceShooterScene(Scene):
         players = self.find_objects_with_tag("player")
         
         # Player bullets vs enemies
-        for bullet in player_bullets:
-            for enemy in enemies:
+        for bullet in list(player_bullets):  # Use list() to avoid modification during iteration
+            if not bullet.active:
+                continue
+            for enemy in list(enemies):
+                if not enemy.active:
+                    continue
                 if self._objects_colliding(bullet, enemy):
                     enemy.take_damage(1)
                     bullet.destroy()
                     break
         
         # Enemy bullets vs player
-        for bullet in enemy_bullets:
-            for player in players:
+        for bullet in list(enemy_bullets):
+            if not bullet.active:
+                continue
+            for player in list(players):
+                if not player.active:
+                    continue
                 if self._objects_colliding(bullet, player):
                     player.take_damage(1)
                     bullet.destroy()
                     break
         
         # Enemies vs player (direct collision)
-        for enemy in enemies:
-            for player in players:
+        for enemy in list(enemies):
+            if not enemy.active:
+                continue
+            for player in list(players):
+                if not player.active:
+                    continue
                 if self._objects_colliding(enemy, player):
                     player.take_damage(1)
                     enemy.take_damage(999)  # Destroy enemy on collision

@@ -30,6 +30,18 @@ class Camera(GameObject):
         self.shake_duration = 0.0
         self.shake_timer = 0.0
         
+        # Enhanced camera features
+        self.zoom = 1.0
+        self.min_zoom = 0.1
+        self.max_zoom = 5.0
+        self.zoom_speed = 2.0
+        self.target_zoom = 1.0
+        self.smooth_zoom = True
+        
+        # 2.5D perspective
+        self.perspective_factor = 0.1  # How much depth affects position
+        self.fov_height = 600  # Field of view height for depth calculations
+        
     def set_target(self, target: GameObject, offset: Vector2 = None):
         """
         Set a target GameObject for the camera to follow.
@@ -64,6 +76,36 @@ class Camera(GameObject):
         self.shake_intensity = intensity
         self.shake_duration = duration
         self.shake_timer = duration
+    
+    def set_zoom(self, zoom: float, smooth: bool = True):
+        """
+        Set camera zoom level.
+        
+        Args:
+            zoom: Zoom factor (1.0 = normal, >1.0 = zoom in, <1.0 = zoom out)
+            smooth: Whether to smoothly transition to new zoom
+        """
+        self.target_zoom = max(self.min_zoom, min(self.max_zoom, zoom))
+        if not smooth:
+            self.zoom = self.target_zoom
+    
+    def zoom_in(self, factor: float = 1.2):
+        """
+        Zoom in by a factor.
+        
+        Args:
+            factor: Zoom factor to multiply current zoom by
+        """
+        self.set_zoom(self.zoom * factor)
+    
+    def zoom_out(self, factor: float = 1.2):
+        """
+        Zoom out by a factor.
+        
+        Args:
+            factor: Zoom factor to divide current zoom by
+        """
+        self.set_zoom(self.zoom / factor)
     
     def update(self, delta_time: float):
         """
@@ -100,6 +142,11 @@ class Camera(GameObject):
             self.shake_timer -= delta_time
             if self.shake_timer <= 0:
                 self.shake_intensity = 0
+        
+        # Update zoom smoothing
+        if self.smooth_zoom and abs(self.zoom - self.target_zoom) > 0.01:
+            zoom_diff = self.target_zoom - self.zoom
+            self.zoom += zoom_diff * self.zoom_speed * delta_time
     
     def get_view_position(self) -> Vector2:
         """
@@ -120,20 +167,30 @@ class Camera(GameObject):
         
         return pos
     
-    def world_to_screen(self, world_pos: Vector2, screen_size: Vector2) -> Vector2:
+    def world_to_screen(self, world_pos: Vector2, screen_size: Vector2, depth: float = 0) -> Vector2:
         """
         Convert world position to screen position relative to this camera.
         
         Args:
             world_pos: Position in world space
             screen_size: Size of the screen
+            depth: Depth value for 2.5D perspective (0 = at camera level)
             
         Returns:
             Position in screen space
         """
         camera_pos = self.get_view_position()
         screen_center = Vector2(screen_size.x / 2, screen_size.y / 2)
-        return world_pos - camera_pos + screen_center
+        
+        # Apply zoom
+        relative_pos = (world_pos - camera_pos) * self.zoom
+        
+        # Apply 2.5D perspective effect
+        if depth != 0:
+            perspective_scale = 1.0 + (depth * self.perspective_factor)
+            relative_pos = relative_pos * perspective_scale
+        
+        return relative_pos + screen_center
     
     def screen_to_world(self, screen_pos: Vector2, screen_size: Vector2) -> Vector2:
         """

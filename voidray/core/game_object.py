@@ -30,6 +30,11 @@ class GameObject:
         # Transform component
         self.transform = Transform()
         
+        # 2.5D properties
+        self.z_order = 0  # Higher values render on top
+        self.layer = "default"  # Layer for grouping and sorting
+        self.depth_scale = 1.0  # Scale factor based on depth for 2.5D effect
+        
         # Hierarchy
         self.parent: Optional['GameObject'] = None
         self.children: List['GameObject'] = []
@@ -188,6 +193,35 @@ class GameObject:
         if self.parent:
             return self.parent.get_world_rotation() + self.transform.rotation
         return self.transform.rotation
+    
+    def get_depth_scale(self) -> float:
+        """
+        Get the depth-based scale for 2.5D effects.
+        
+        Returns:
+            Scale factor based on depth
+        """
+        if self.parent:
+            return self.parent.get_depth_scale() * self.depth_scale
+        return self.depth_scale
+    
+    def set_z_order(self, z_order: int):
+        """
+        Set the Z-order (depth) of this object.
+        
+        Args:
+            z_order: Higher values render on top
+        """
+        self.z_order = z_order
+    
+    def set_layer(self, layer: str):
+        """
+        Set the rendering layer of this object.
+        
+        Args:
+            layer: Layer name
+        """
+        self.layer = layer
     
     def destroy(self):
         """
