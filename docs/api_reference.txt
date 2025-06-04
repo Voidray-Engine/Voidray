@@ -1,0 +1,816 @@
+VoidRay 2D Game Engine - API Reference
+=======================================
+
+This document provides a comprehensive reference for all VoidRay classes and methods.
+
+Table of Contents
+-----------------
+1. Core Classes
+2. Rendering System
+3. Input System
+4. Physics System
+5. Audio System
+6. Math Utilities
+7. Asset Management
+8. Utility Classes
+
+1. Core Classes
+===============
+
+Engine
+------
+The main engine class that manages the game loop and systems.
+
+Constructor:
+    Engine(width=800, height=600, title="VoidRay Game")
+
+Methods:
+    set_target_fps(fps: int) -> None
+        Set the target frames per second.
+    
+    add_scene(name: str, scene: Scene) -> None
+        Add a scene to the engine.
+    
+    load_scene(name: str) -> None
+        Load and activate a scene by name.
+    
+    run() -> None
+        Start the main game loop.
+    
+    quit() -> None
+        Stop the engine and exit.
+    
+    get_system(system_type: type) -> Any
+        Get a reference to an engine system.
+
+Properties:
+    renderer: Renderer - The rendering system
+    input_manager: InputManager - Input handling system
+    audio_manager: AudioManager - Audio playback system
+    physics_system: PhysicsSystem - Physics simulation system
+    asset_loader: AssetLoader - Asset management system
+    time: Time - Time management utilities
+
+GameObject
+----------
+The fundamental entity class that represents objects in the game world.
+
+Constructor:
+    GameObject(name="GameObject")
+
+Methods:
+    add_component(component: Component) -> Component
+        Add a component to this game object.
+    
+    get_component(component_type: Type[T]) -> Optional[T]
+        Get a component of the specified type.
+    
+    remove_component(component_type: Type[Component]) -> bool
+        Remove a component of the specified type.
+    
+    has_component(component_type: Type[Component]) -> bool
+        Check if this game object has a component.
+    
+    add_child(child: GameObject) -> None
+        Add a child game object.
+    
+    remove_child(child: GameObject) -> bool
+        Remove a child game object.
+    
+    get_child(name: str) -> Optional[GameObject]
+        Get a child by name.
+    
+    destroy() -> None
+        Destroy this game object.
+    
+    set_active(active: bool) -> None
+        Set the active state of this game object.
+
+Properties:
+    name: str - The name of this game object
+    active: bool - Whether the game object is active
+    transform: Transform - The transform component
+    children: List[GameObject] - Child game objects
+    parent: Optional[GameObject] - Parent game object
+
+Scene
+-----
+Manages collections of game objects and provides scene-level functionality.
+
+Constructor:
+    Scene(name="Scene")
+
+Methods:
+    add_game_object(game_object: GameObject) -> None
+        Add a game object to this scene.
+    
+    remove_game_object(game_object: GameObject) -> None
+        Remove a game object from this scene.
+    
+    find_game_object(name: str) -> Optional[GameObject]
+        Find a game object by name.
+    
+    find_game_objects_with_component(component_type: type) -> List[GameObject]
+        Find all game objects with a specific component.
+    
+    clear() -> None
+        Remove all game objects from this scene.
+    
+    on_enter() -> None
+        Called when this scene becomes active. Override in subclasses.
+    
+    on_exit() -> None
+        Called when this scene becomes inactive. Override in subclasses.
+    
+    handle_event(event: pygame.event.Event) -> None
+        Handle pygame events. Override in subclasses.
+
+Properties:
+    name: str - The name of this scene
+    game_objects: List[GameObject] - Game objects in the scene
+    engine: Engine - Reference to the engine
+
+Component
+---------
+Base class for all components that can be attached to game objects.
+
+Constructor:
+    Component()
+
+Methods:
+    on_attach() -> None
+        Called when attached to a game object. Override in subclasses.
+    
+    on_detach() -> None
+        Called when detached from a game object. Override in subclasses.
+    
+    update(delta_time: float) -> None
+        Update the component logic. Override in subclasses.
+    
+    set_enabled(enabled: bool) -> None
+        Enable or disable this component.
+
+Properties:
+    enabled: bool - Whether the component is enabled
+    game_object: GameObject - The attached game object
+    transform: Transform - Shortcut to the game object's transform
+
+2. Rendering System
+===================
+
+Renderer
+--------
+The main rendering system that handles drawing visual elements.
+
+Methods:
+    set_camera(camera: Camera) -> None
+        Set the active camera for rendering.
+    
+    set_clear_color(color: Color) -> None
+        Set the background clear color.
+    
+    clear() -> None
+        Clear the screen with the current clear color.
+    
+    present() -> None
+        Present the rendered frame to the screen.
+    
+    world_to_screen(world_pos: Vector2) -> Vector2
+        Convert world coordinates to screen coordinates.
+    
+    screen_to_world(screen_pos: Vector2) -> Vector2
+        Convert screen coordinates to world coordinates.
+    
+    draw_sprite(surface: pygame.Surface, position: Vector2, rotation: float, scale: Vector2) -> None
+        Draw a sprite to the screen.
+    
+    draw_rect(position: Vector2, size: Vector2, color: Color, filled: bool, width: int) -> None
+        Draw a rectangle.
+    
+    draw_circle(center: Vector2, radius: float, color: Color, filled: bool, width: int) -> None
+        Draw a circle.
+    
+    draw_line(start: Vector2, end: Vector2, color: Color, width: int) -> None
+        Draw a line.
+    
+    draw_text(text: str, position: Vector2, color: Color, font_size: int, font_name: str) -> None
+        Draw text to the screen.
+
+Sprite
+------
+A component that renders a 2D sprite/texture.
+
+Constructor:
+    Sprite(texture=None)
+
+Methods:
+    set_texture(texture: pygame.Surface) -> None
+        Set the sprite texture.
+    
+    set_color(color: Color) -> None
+        Set the sprite color modulation.
+    
+    set_flip(flip_x: bool, flip_y: bool) -> None
+        Set sprite flipping.
+    
+    setup_animation(frame_width: int, frame_height: int, frame_count: int, animation_speed: float) -> None
+        Setup sprite animation parameters.
+    
+    play_animation(loop: bool) -> None
+        Start playing the animation.
+    
+    stop_animation() -> None
+        Stop the animation.
+    
+    get_bounds() -> pygame.Rect
+        Get the bounding rectangle of the sprite.
+
+Properties:
+    texture: pygame.Surface - The sprite texture
+    color: Color - Color modulation
+    layer: int - Rendering layer
+    visible: bool - Whether the sprite is visible
+    flip_x: bool - Horizontal flip
+    flip_y: bool - Vertical flip
+
+Camera
+------
+A camera component that defines the view area.
+
+Constructor:
+    Camera(width=800, height=600)
+
+Methods:
+    set_screen_size(width: int, height: int) -> None
+        Set the screen dimensions.
+    
+    set_zoom(zoom: float) -> None
+        Set the camera zoom level.
+    
+    set_zoom_limits(min_zoom: float, max_zoom: float) -> None
+        Set the zoom limits.
+    
+    set_follow_target(target: GameObject, smoothing: float, offset: Vector2) -> None
+        Set a target for the camera to follow.
+    
+    clear_follow_target() -> None
+        Stop following any target.
+    
+    set_bounds(min_pos: Vector2, max_pos: Vector2) -> None
+        Set camera bounds to limit movement.
+    
+    clear_bounds() -> None
+        Remove camera bounds.
+    
+    world_to_screen(world_pos: Vector2) -> Vector2
+        Convert world coordinates to screen coordinates.
+    
+    screen_to_world(screen_pos: Vector2) -> Vector2
+        Convert screen coordinates to world coordinates.
+    
+    get_view_bounds() -> tuple
+        Get the world space bounds of what the camera can see.
+    
+    is_visible(position: Vector2, size: Vector2) -> bool
+        Check if a position or area is visible by the camera.
+
+Properties:
+    zoom: float - Current zoom level
+    follow_target: GameObject - Target to follow
+    follow_smoothing: float - Follow responsiveness
+    use_bounds: bool - Whether bounds are enabled
+
+3. Input System
+===============
+
+InputManager
+------------
+Manages all input including keyboard and mouse.
+
+Methods:
+    handle_event(event: pygame.event.Event) -> None
+        Handle a pygame event and update input state.
+    
+    update() -> None
+        Update input state. Called automatically by engine.
+    
+    is_key_held(key: Keys) -> bool
+        Check if a key is currently being held down.
+    
+    is_key_pressed(key: Keys) -> bool
+        Check if a key was pressed this frame.
+    
+    is_key_released(key: Keys) -> bool
+        Check if a key was released this frame.
+    
+    is_mouse_button_held(button: MouseButtons) -> bool
+        Check if a mouse button is currently being held down.
+    
+    is_mouse_button_pressed(button: MouseButtons) -> bool
+        Check if a mouse button was pressed this frame.
+    
+    is_mouse_button_released(button: MouseButtons) -> bool
+        Check if a mouse button was released this frame.
+    
+    get_mouse_position() -> Vector2
+        Get the current mouse position in screen coordinates.
+    
+    get_mouse_delta() -> Vector2
+        Get the mouse movement delta since last frame.
+    
+    get_mouse_wheel_delta() -> int
+        Get the mouse wheel scroll delta for this frame.
+    
+    get_movement_input() -> Vector2
+        Get normalized movement input from WASD or arrow keys.
+    
+    any_key_pressed() -> bool
+        Check if any key was pressed this frame.
+
+Keys Enum
+---------
+Enumeration of keyboard keys including:
+- Letters: A-Z
+- Numbers: NUM_0 to NUM_9
+- Arrow keys: UP, DOWN, LEFT, RIGHT
+- Special keys: SPACE, ENTER, ESCAPE, TAB, etc.
+- Modifier keys: SHIFT, CTRL, ALT
+- Function keys: F1-F12
+
+MouseButtons Enum
+-----------------
+Enumeration of mouse buttons:
+- LEFT = 1
+- MIDDLE = 2
+- RIGHT = 3
+
+4. Physics System
+=================
+
+PhysicsSystem
+-------------
+The main physics system that manages physics simulation.
+
+Methods:
+    add_rigidbody(rigidbody: Rigidbody) -> None
+        Add a rigidbody to the physics system.
+    
+    remove_rigidbody(rigidbody: Rigidbody) -> None
+        Remove a rigidbody from the physics system.
+    
+    add_collider(collider: Collider) -> None
+        Add a collider to the physics system.
+    
+    remove_collider(collider: Collider) -> None
+        Remove a collider from the physics system.
+    
+    set_gravity(gravity: float) -> None
+        Set the global gravity value.
+
+Properties:
+    gravity: float - Global gravity acceleration
+
+Rigidbody
+---------
+A physics component that gives game objects physical properties.
+
+Constructor:
+    Rigidbody()
+
+Methods:
+    add_force(force: Vector2) -> None
+        Add a force to the rigidbody.
+    
+    add_impulse(impulse: Vector2) -> None
+        Add an impulse to the rigidbody.
+    
+    add_torque(torque: float) -> None
+        Add rotational torque to the rigidbody.
+    
+    set_velocity(velocity: Vector2) -> None
+        Set the rigidbody's velocity directly.
+    
+    set_angular_velocity(angular_velocity: float) -> None
+        Set the rigidbody's angular velocity directly.
+    
+    stop() -> None
+        Stop all motion by setting velocities to zero.
+    
+    set_mass(mass: float) -> None
+        Set the mass of the rigidbody.
+    
+    set_drag(drag: float) -> None
+        Set the linear drag coefficient.
+    
+    set_angular_drag(angular_drag: float) -> None
+        Set the angular drag coefficient.
+    
+    set_bounciness(bounciness: float) -> None
+        Set the bounciness (restitution) of the rigidbody.
+    
+    set_gravity_enabled(enabled: bool) -> None
+        Enable or disable gravity for this rigidbody.
+    
+    freeze_position(x: bool, y: bool) -> None
+        Freeze position on specific axes.
+    
+    set_freeze_rotation(freeze: bool) -> None
+        Freeze or unfreeze rotation.
+
+Properties:
+    velocity: Vector2 - Current velocity
+    mass: float - Mass of the object
+    drag: float - Linear damping
+    use_gravity: bool - Whether gravity affects this rigidbody
+    bounciness: float - Restitution coefficient
+    angular_velocity: float - Rotation speed
+    angular_drag: float - Angular damping
+
+Collider
+--------
+Base class for all collision shapes.
+
+Properties:
+    is_trigger: bool - If true, collisions don't cause physical response
+    layer: int - Collision layer
+
+Methods:
+    on_collision(other: Collider, collision_info: dict) -> None
+        Called when this collider collides with another.
+    
+    get_bounds() -> pygame.Rect
+        Get the bounding rectangle of this collider.
+
+BoxCollider
+-----------
+A rectangular collision shape.
+
+Constructor:
+    BoxCollider(width=1, height=1, offset=Vector2.zero())
+
+Properties:
+    width: float - Width of the collision box
+    height: float - Height of the collision box
+    offset: Vector2 - Offset from the transform position
+
+CircleCollider
+--------------
+A circular collision shape.
+
+Constructor:
+    CircleCollider(radius=1, offset=Vector2.zero())
+
+Properties:
+    radius: float - Radius of the collision circle
+    offset: Vector2 - Offset from the transform position
+
+Methods:
+    get_center() -> Vector2
+        Get the center position of the circle.
+
+5. Audio System
+===============
+
+AudioManager
+------------
+Manages all audio functionality.
+
+Methods:
+    load_sound(name: str, file_path: str) -> bool
+        Load a sound effect from file.
+    
+    play_sound(name: str, volume: float, loops: int) -> Optional[pygame.mixer.Channel]
+        Play a loaded sound effect.
+    
+    stop_sound(name: str) -> None
+        Stop all instances of a specific sound.
+    
+    load_music(file_path: str) -> bool
+        Load background music from file.
+    
+    play_music(loops: int, start_pos: float) -> bool
+        Play the loaded background music.
+    
+    stop_music() -> None
+        Stop the background music.
+    
+    pause_music() -> None
+        Pause the background music.
+    
+    unpause_music() -> None
+        Unpause the background music.
+    
+    is_music_playing() -> bool
+        Check if music is currently playing.
+    
+    set_master_volume(volume: float) -> None
+        Set the master volume level.
+    
+    set_sfx_volume(volume: float) -> None
+        Set the sound effects volume level.
+    
+    set_music_volume(volume: float) -> None
+        Set the music volume level.
+    
+    fade_in_music(duration: float) -> bool
+        Fade in the background music.
+    
+    fade_out_music(duration: float) -> None
+        Fade out the background music.
+
+6. Math Utilities
+=================
+
+Vector2
+-------
+A 2D vector class with mathematical operations.
+
+Constructor:
+    Vector2(x=0, y=0)
+
+Static Methods:
+    Vector2.zero() -> Vector2 - Create a zero vector (0, 0)
+    Vector2.one() -> Vector2 - Create a vector (1, 1)
+    Vector2.up() -> Vector2 - Create an up vector (0, -1)
+    Vector2.down() -> Vector2 - Create a down vector (0, 1)
+    Vector2.left() -> Vector2 - Create a left vector (-1, 0)
+    Vector2.right() -> Vector2 - Create a right vector (1, 0)
+
+Methods:
+    magnitude() -> float
+        Calculate the magnitude (length) of the vector.
+    
+    magnitude_squared() -> float
+        Calculate the squared magnitude of the vector.
+    
+    normalized() -> Vector2
+        Get a normalized (unit length) version of this vector.
+    
+    normalize() -> None
+        Normalize this vector in place.
+    
+    dot(other: Vector2) -> float
+        Calculate the dot product with another vector.
+    
+    cross(other: Vector2) -> float
+        Calculate the 2D cross product.
+    
+    distance_to(other: Vector2) -> float
+        Calculate the distance to another vector.
+    
+    distance_to_squared(other: Vector2) -> float
+        Calculate the squared distance to another vector.
+    
+    angle_to(other: Vector2) -> float
+        Calculate the angle to another vector in radians.
+    
+    angle() -> float
+        Get the angle of this vector in radians.
+    
+    rotate(angle: float) -> Vector2
+        Rotate this vector by an angle in radians.
+    
+    lerp(other: Vector2, t: float) -> Vector2
+        Linear interpolation between this vector and another.
+    
+    reflect(normal: Vector2) -> Vector2
+        Reflect this vector off a surface with the given normal.
+    
+    project(other: Vector2) -> Vector2
+        Project this vector onto another vector.
+    
+    perpendicular() -> Vector2
+        Get a vector perpendicular to this one.
+    
+    copy() -> Vector2
+        Create a copy of this vector.
+
+Properties:
+    x: float - X component
+    y: float - Y component
+
+Transform
+---------
+Represents the transformation of an object in 2D space.
+
+Constructor:
+    Transform(position=Vector2.zero(), rotation=0, scale=Vector2.one())
+
+Methods:
+    set_position(position: Vector2) -> None
+        Set the position of this transform.
+    
+    set_rotation(rotation: float) -> None
+        Set the rotation of this transform in degrees.
+    
+    set_scale(scale: Vector2) -> None
+        Set the scale of this transform.
+    
+    translate(offset: Vector2) -> None
+        Move the transform by an offset.
+    
+    rotate(angle: float) -> None
+        Rotate the transform by an angle in degrees.
+    
+    scale_by(factor: Vector2) -> None
+        Scale the transform by a factor.
+    
+    get_world_position() -> Vector2
+        Get the world position of this transform.
+    
+    get_world_rotation() -> float
+        Get the world rotation of this transform.
+    
+    get_world_scale() -> Vector2
+        Get the world scale of this transform.
+    
+    set_parent(parent: Transform) -> None
+        Set the parent transform.
+    
+    add_child(child: Transform) -> None
+        Add a child transform.
+    
+    remove_child(child: Transform) -> bool
+        Remove a child transform.
+    
+    get_forward_vector() -> Vector2
+        Get the forward direction vector based on current rotation.
+    
+    get_right_vector() -> Vector2
+        Get the right direction vector based on current rotation.
+    
+    get_up_vector() -> Vector2
+        Get the up direction vector based on current rotation.
+    
+    look_at(target: Vector2) -> None
+        Rotate to look at a target position.
+    
+    transform_point(local_point: Vector2) -> Vector2
+        Transform a local point to world space.
+    
+    inverse_transform_point(world_point: Vector2) -> Vector2
+        Transform a world point to local space.
+
+Properties:
+    position: Vector2 - Position in space
+    rotation: float - Rotation in degrees
+    scale: Vector2 - Scale factors
+    parent: Transform - Parent transform
+    children: List[Transform] - Child transforms
+
+7. Asset Management
+===================
+
+AssetLoader
+-----------
+Manages loading and caching of game assets.
+
+Methods:
+    add_search_path(path: str) -> None
+        Add a search path for assets.
+    
+    load_texture(name: str, filename: str, convert_alpha: bool, colorkey: Color) -> Optional[pygame.Surface]
+        Load an image texture.
+    
+    get_texture(name: str) -> Optional[pygame.Surface]
+        Get a loaded texture by name.
+    
+    create_texture(name: str, width: int, height: int, color: Color, alpha: bool) -> pygame.Surface
+        Create a solid color texture.
+    
+    load_sound(name: str, filename: str) -> Optional[pygame.mixer.Sound]
+        Load a sound effect.
+    
+    get_sound(name: str) -> Optional[pygame.mixer.Sound]
+        Get a loaded sound by name.
+    
+    load_font(name: str, filename: str, size: int) -> Optional[pygame.font.Font]
+        Load a font.
+    
+    get_font(name: str, size: int) -> Optional[pygame.font.Font]
+        Get a loaded font by name and size.
+    
+    load_data(name: str, filename: str) -> Optional[Any]
+        Load arbitrary data from a file.
+    
+    get_data(name: str) -> Optional[Any]
+        Get loaded data by name.
+    
+    unload_texture(name: str) -> bool
+        Unload a texture from memory.
+    
+    unload_sound(name: str) -> bool
+        Unload a sound from memory.
+    
+    clear_all() -> None
+        Clear all loaded assets from memory.
+
+8. Utility Classes
+==================
+
+Time
+----
+Manages time-related functionality for the game engine.
+
+Methods:
+    get_delta_time() -> float
+        Get the scaled delta time for this frame.
+    
+    get_unscaled_delta_time() -> float
+        Get the unscaled delta time for this frame.
+    
+    get_total_time() -> float
+        Get the total scaled time since the game started.
+    
+    get_real_time() -> float
+        Get the real time since the game started.
+    
+    get_frame_count() -> int
+        Get the total number of frames rendered.
+    
+    get_fps() -> float
+        Get the current frames per second.
+    
+    set_time_scale(scale: float) -> None
+        Set the time scale for the game.
+    
+    get_time_scale() -> float
+        Get the current time scale.
+    
+    pause() -> None
+        Pause time by setting time scale to 0.
+    
+    resume() -> None
+        Resume time by setting time scale to 1.0.
+    
+    is_paused() -> bool
+        Check if time is paused.
+
+Static Methods:
+    Time.get_time() -> float
+        Get the current system time.
+    
+    Time.sleep(seconds: float) -> None
+        Sleep for a specified duration.
+
+Properties:
+    delta_time: float - Current frame delta time
+    time_scale: float - Time scale multiplier
+    total_time: float - Total elapsed time
+    frame_count: int - Total frames rendered
+    fps: float - Current frames per second
+
+Color
+-----
+Represents a color with RGBA components.
+
+Constructor:
+    Color(r=255, g=255, b=255, a=255)
+
+Class Methods:
+    Color.from_rgb(r: int, g: int, b: int) -> Color
+        Create a color from RGB values.
+    
+    Color.from_rgba(r: int, g: int, b: int, a: int) -> Color
+        Create a color from RGBA values.
+    
+    Color.from_hex(hex_string: str) -> Color
+        Create a color from a hex string.
+    
+    Color.from_hsv(h: float, s: float, v: float, a: float) -> Color
+        Create a color from HSV values.
+
+Methods:
+    to_tuple() -> Tuple[int, int, int]
+        Convert to RGB tuple.
+    
+    to_tuple_rgba() -> Tuple[int, int, int, int]
+        Convert to RGBA tuple.
+    
+    to_hex(include_alpha: bool) -> str
+        Convert to hex string.
+    
+    to_hsv() -> Tuple[float, float, float]
+        Convert to HSV tuple.
+    
+    lerp(other: Color, t: float) -> Color
+        Linear interpolation between this color and another.
+    
+    with_alpha(alpha: Union[int, float]) -> Color
+        Create a new color with a different alpha value.
+    
+    copy() -> Color
+        Create a copy of this color.
+
+Color Constants:
+    Color.BLACK, Color.WHITE, Color.RED, Color.GREEN, Color.BLUE,
+    Color.YELLOW, Color.CYAN, Color.MAGENTA, Color.GRAY, Color.TRANSPARENT
+
+Properties:
+    r: int - Red component (0-255)
+    g: int - Green component (0-255)
+    b: int - Blue component (0-255)
+    a: int - Alpha component (0-255)
+
+This reference covers the main classes and methods available in VoidRay.
+For more detailed examples and usage patterns, see the tutorial files and example games.

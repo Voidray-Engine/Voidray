@@ -1,0 +1,47 @@
+VoidRay Game Engine - Getting Started Guide
+==========================================
+
+Welcome to VoidRay, a lightweight 2D game engine built with Python and Pygame!
+
+SYSTEM REQUIREMENTS
+------------------
+- Python 3.8 or higher
+- Pygame 2.0+ (automatically installed with pip)
+- Cross-platform: Windows, macOS, Linux
+
+INSTALLATION
+-----------
+1. Ensure Python 3.8+ is installed on your system
+2. Install Pygame: pip install pygame
+3. Download or clone the VoidRay engine
+4. The engine is ready to use - no compilation required!
+
+QUICK START - YOUR FIRST GAME
+-----------------------------
+Let's create a simple game in just a few lines of code:
+
+1. Create a new Python file (e.g., my_game.py)
+2. Add this code:
+
+```python
+from voidray import Engine, Scene, Sprite, Vector2
+from voidray.graphics.renderer import Color
+
+# Create a simple player sprite
+class Player(Sprite):
+    def __init__(self):
+        super().__init__("Player")
+        self.create_colored_rect(32, 32, Color.BLUE)
+
+# Create the main game scene
+class GameScene(Scene):
+    def on_enter(self):
+        player = Player()
+        player.transform.position = Vector2(400, 300)
+        self.add_object(player)
+
+# Create and run the game
+engine = Engine(800, 600, "My First VoidRay Game")
+scene = GameScene()
+engine.set_scene(scene)
+engine.run()

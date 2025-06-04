@@ -1,0 +1,43 @@
+VoidRay Game Engine - Basic Game Tutorial
+=========================================
+
+This tutorial will guide you through creating a complete game from scratch using VoidRay. We'll build a simple collection game where the player moves around collecting items while avoiding enemies.
+
+WHAT WE'LL BUILD
+---------------
+- A player character that moves with keyboard input
+- Collectible items that appear randomly
+- Enemies that move in patterns
+- Score tracking and game over conditions
+- Basic particle effects
+- Sound effects (optional)
+
+STEP 1: PROJECT SETUP
+---------------------
+1. Create a new directory for your game: mkdir my_collection_game
+2. Create the main game file: my_game.py
+
+Start with this basic structure:
+
+```python
+import sys
+import os
+# Add VoidRay to path (adjust if needed)
+sys.path.insert(0, '../voidray')
+
+from voidray import Engine, Scene, Sprite, Vector2, Keys
+from voidray.graphics.renderer import Color
+from voidray.physics.collider import RectCollider
+import random
+import math
+
+# We'll add our classes here
+
+def main():
+    engine = Engine(800, 600, "Collection Game")
+    scene = GameScene()
+    engine.set_scene(scene)
+    engine.run()
+
+if __name__ == "__main__":
+    main()

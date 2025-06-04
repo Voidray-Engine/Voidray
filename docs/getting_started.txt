@@ -1,0 +1,117 @@
+VoidRay 2D Game Engine - Getting Started Guide
+===============================================
+
+Welcome to VoidRay, a lightweight 2D game engine built with Python and Pygame!
+This guide will help you get started with creating your first game using VoidRay.
+
+Table of Contents
+-----------------
+1. Installation
+2. Basic Concepts
+3. Your First Game
+4. Key Engine Systems
+5. Next Steps
+
+1. Installation
+---------------
+
+Prerequisites:
+- Python 3.8 or higher
+- pip (Python package installer)
+
+Required Dependencies:
+- pygame (automatically installed with VoidRay)
+
+Installation Steps:
+1. Download or clone the VoidRay engine files
+2. Navigate to the VoidRay directory
+3. Install using pip:
+   pip install -e .
+
+Or install dependencies manually:
+   pip install pygame
+
+2. Basic Concepts
+-----------------
+
+VoidRay uses a component-based architecture with the following core concepts:
+
+Engine:
+- The main engine class that manages the game loop and systems
+- Handles window creation, input, rendering, and physics
+
+Scene:
+- A container for game objects in a specific game state or level
+- Manages object lifecycle and updates
+
+GameObject:
+- The fundamental entity in your game world
+- Can have multiple components attached to provide functionality
+
+Component:
+- Modular pieces of functionality that can be attached to GameObjects
+- Examples: Sprite (for rendering), Rigidbody (for physics), custom scripts
+
+Transform:
+- Every GameObject has a Transform that defines its position, rotation, and scale
+- Supports hierarchical transformations (parent-child relationships)
+
+3. Your First Game
+------------------
+
+Here's a minimal example to get you started:
+
+```python
+import voidray
+from voidray import *
+
+# Create a simple player controller component
+class PlayerController(Component):
+    def __init__(self):
+        super().__init__()
+        self.speed = 200.0
+    
+    def on_attach(self):
+        self.input_manager = self.game_object._scene.engine.input_manager
+    
+    def update(self, delta_time):
+        movement = self.input_manager.get_movement_input()
+        velocity = movement * self.speed * delta_time
+        self.transform.translate(velocity)
+
+# Create a game scene
+class MyGameScene(Scene):
+    def on_enter(self):
+        # Create a player game object
+        player = GameObject("Player")
+        player.transform.position = Vector2(400, 300)
+        
+        # Add a sprite component
+        player_texture = self.engine.asset_loader.create_texture(
+            "player", 32, 32, Color.BLUE
+        )
+        sprite = Sprite(player_texture)
+        player.add_component(sprite)
+        
+        # Add the player controller
+        controller = PlayerController()
+        player.add_component(controller)
+        
+        # Add to scene
+        self.add_game_object(player)
+
+# Main function
+def main():
+    # Create the engine
+    engine = Engine(800, 600, "My First VoidRay Game")
+    
+    # Create and load the scene
+    scene = MyGameScene()
+    engine.add_scene("main", scene)
+    engine.load_scene("main")
+    
+    # Run the game
+    engine.run()
+
+if __name__ == "__main__":
+    main()

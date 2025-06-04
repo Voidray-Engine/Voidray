@@ -1,0 +1,38 @@
+VoidRay Tutorial: Creating a Basic Game
+=======================================
+
+This tutorial will walk you through creating a complete basic game using VoidRay,
+covering fundamental concepts and common patterns you'll use in game development.
+
+What We'll Build
+----------------
+A simple top-down game where the player controls a blue square, avoiding red enemies
+that move randomly around the screen. When the player touches an enemy, they respawn
+at the center of the screen.
+
+Prerequisites
+-------------
+- VoidRay engine installed
+- Basic Python knowledge
+- Completed the Getting Started guide
+
+Table of Contents
+-----------------
+1. Setting Up the Project Structure
+2. Creating the Engine and Scene
+3. Building the Player Controller
+4. Adding Enemy AI
+5. Implementing Collision Detection
+6. Adding Visual Polish
+7. Complete Code and Next Steps
+
+1. Setting Up the Project Structure
+-----------------------------------
+
+Create a new Python file for your game (e.g., my_basic_game.py):
+
+```python
+import voidray
+from voidray import *
+from voidray.physics.collision import BoxCollider
+import random
