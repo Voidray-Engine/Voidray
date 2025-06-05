@@ -1,325 +1,296 @@
 """
 VoidRay Asset Loader
-Centralized system for loading and caching game assets.
+Enhanced asset loading system with better caching and file support.
 """
 
 import pygame
-import json
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Optional, List, Any
+from pathlib import Path
 
 
 class AssetLoader:
     """
-    Manages loading and caching of game assets.
+    Enhanced Asset Loader that handles images, sounds, and other game assets
+    with efficient caching and multiple file format support.
     """
-    
+
     def __init__(self):
-        """
-        Initialize the asset loader.
-        """
-        self.images: Dict[str, pygame.Surface] = {}
-        self.sounds: Dict[str, pygame.mixer.Sound] = {}
-        self.data: Dict[str, Any] = {}
-        self.fonts: Dict[str, pygame.font.Font] = {}
-        
-        # Asset search paths
-        self.image_paths = ["assets/images/", "images/", "./"]
-        self.sound_paths = ["assets/sounds/", "sounds/", "./"]
-        self.data_paths = ["assets/data/", "data/", "./"]
-        self.font_paths = ["assets/fonts/", "fonts/", "./"]
-        
-        print("Asset loader initialized")
-    
+        """Initialize the asset loader."""
+        # Asset caches for different types
+        self.image_cache: Dict[str, pygame.Surface] = {}
+        self.sound_cache: Dict[str, pygame.mixer.Sound] = {}
+        self.music_cache: Dict[str, str] = {}  # Store file paths for music
+
+        # Search paths for different asset types
+        self.search_paths = {
+            "image": ["./", "./assets/", "./images/", "./textures/", "./sprites/", "./examples/assets/"],
+            "sound": ["./", "./assets/", "./audio/", "./sounds/", "./sfx/", "./examples/assets/"],
+            "music": ["./", "./assets/", "./audio/", "./music/", "./examples/assets/"]
+        }
+
+        # Supported file formats
+        self.supported_formats = {
+            "image": [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".tga"],
+            "sound": [".wav", ".ogg", ".mp3"],
+            "music": [".mp3", ".ogg", ".wav", ".mid", ".midi"]
+        }
+
+        # Loading statistics
+        self.stats = {
+            "images_loaded": 0,
+            "sounds_loaded": 0,
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "failed_loads": 0
+        }
+
+        print("AssetLoader initialized with enhanced caching and format support")
+
     def add_search_path(self, asset_type: str, path: str):
-        """
-        Add a search path for a specific asset type.
-        
-        Args:
-            asset_type: Type of asset ('image', 'sound', 'data', 'font')
-            path: Path to add to search list
-        """
-        if asset_type == "image":
-            self.image_paths.insert(0, path)
-        elif asset_type == "sound":
-            self.sound_paths.insert(0, path)
-        elif asset_type == "data":
-            self.data_paths.insert(0, path)
-        elif asset_type == "font":
-            self.font_paths.insert(0, path)
-    
-    def _find_file(self, filename: str, search_paths: list) -> Optional[str]:
-        """
-        Find a file in the search paths.
-        
-        Args:
-            filename: Name of the file to find
-            search_paths: List of paths to search
-            
-        Returns:
-            Full path to the file or None if not found
-        """
-        for path in search_paths:
-            full_path = os.path.join(path, filename)
-            if os.path.exists(full_path):
+        """Add a search path for a specific asset type."""
+        if asset_type not in self.search_paths:
+            self.search_paths[asset_type] = []
+
+        # Normalize path and ensure it exists
+        normalized_path = os.path.normpath(path)
+        if not normalized_path.endswith("/"):
+            normalized_path += "/"
+
+        if normalized_path not in self.search_paths[asset_type]:
+            self.search_paths[asset_type].append(normalized_path)
+
+        print(f"Added search path for {asset_type}: {normalized_path}")
+
+    def _find_file(self, filename: str, asset_type: str) -> Optional[str]:
+        """Find a file in the search paths."""
+        if not filename:
+            return None
+
+        # If it's already a full path and exists, use it
+        if os.path.isfile(filename):
+            return filename
+
+        # Search in configured paths
+        for search_path in self.search_paths.get(asset_type, []):
+            # Try exact filename first
+            full_path = os.path.join(search_path, filename)
+            if os.path.isfile(full_path):
                 return full_path
+
+            # Try with different extensions if no extension provided
+            if "." not in filename:
+                for ext in self.supported_formats.get(asset_type, []):
+                    full_path_with_ext = full_path + ext
+                    if os.path.isfile(full_path_with_ext):
+                        return full_path_with_ext
+
         return None
-    
-    def load_image(self, name: str, filename: str, convert_alpha: bool = True) -> pygame.Surface:
+
+    def load_image(self, name: str, filename: str = None) -> Optional[pygame.Surface]:
         """
-        Load an image asset.
-        
+        Load an image asset with enhanced format support.
+
         Args:
-            name: Identifier for the image
-            filename: Filename of the image
-            convert_alpha: Whether to convert with alpha channel
-            
+            name: Cache key for the image
+            filename: Filename to load (defaults to name if not provided)
+
         Returns:
-            The loaded pygame Surface
+            Loaded pygame Surface or None if failed
         """
-        if name in self.images:
-            return self.images[name]
-        
-        file_path = self._find_file(filename, self.image_paths)
+        if filename is None:
+            filename = name
+
+        # Check cache first
+        if name in self.image_cache:
+            self.stats["cache_hits"] += 1
+            return self.image_cache[name]
+
+        self.stats["cache_misses"] += 1
+
+        # Find the file
+        file_path = self._find_file(filename, "image")
         if not file_path:
-            print(f"Image file not found: {filename}")
-            # Create a placeholder surface
-            surface = pygame.Surface((32, 32))
-            surface.fill((255, 0, 255))  # Magenta placeholder
-            self.images[name] = surface
-            return surface
-        
+            print(f"Warning: Could not find image file: {filename}")
+            self.stats["failed_loads"] += 1
+            return None
+
         try:
-            if convert_alpha:
-                surface = pygame.image.load(file_path).convert_alpha()
+            # Load the image
+            if file_path.lower().endswith('.svg'):
+                # SVG requires special handling - for now, create a placeholder
+                print(f"Warning: SVG support limited, using placeholder for: {filename}")
+                surface = pygame.Surface((32, 32), pygame.SRCALPHA)
+                pygame.draw.circle(surface, (255, 255, 255), (16, 16), 15)
             else:
-                surface = pygame.image.load(file_path).convert()
-            
-            self.images[name] = surface
-            print(f"Loaded image: {name} from {file_path}")
+                surface = pygame.image.load(file_path)
+                # Convert to optimize blitting performance
+                if surface.get_alpha() is not None:
+                    surface = surface.convert_alpha()
+                else:
+                    surface = surface.convert()
+
+            self.image_cache[name] = surface
+            self.stats["images_loaded"] += 1
+            print(f"Loaded image: {filename} -> {file_path}")
             return surface
-            
+
         except pygame.error as e:
-            print(f"Error loading image {file_path}: {e}")
-            # Create a placeholder surface
-            surface = pygame.Surface((32, 32))
-            surface.fill((255, 0, 255))  # Magenta placeholder
-            self.images[name] = surface
-            return surface
-    
-    def get_image(self, name: str) -> Optional[pygame.Surface]:
-        """
-        Get a loaded image by name.
-        
-        Args:
-            name: Name of the image
-            
-        Returns:
-            The pygame Surface or None if not found
-        """
-        return self.images.get(name)
-    
-    def load_sound(self, name: str, filename: str) -> pygame.mixer.Sound:
+            print(f"Failed to load image {filename}: {e}")
+            self.stats["failed_loads"] += 1
+            return None
+
+    def load_sound(self, name: str, filename: str = None) -> Optional[pygame.mixer.Sound]:
         """
         Load a sound asset.
-        
+
         Args:
-            name: Identifier for the sound
-            filename: Filename of the sound
-            
+            name: Cache key for the sound
+            filename: Filename to load (defaults to name if not provided)
+
         Returns:
-            The loaded pygame Sound
+            Loaded pygame Sound or None if failed
         """
-        if name in self.sounds:
-            return self.sounds[name]
-        
-        # Check if mixer is available
-        try:
-            pygame.mixer.get_init()
-        except pygame.error:
-            print(f"Audio not available, skipping sound: {filename}")
-            return None
-        
-        file_path = self._find_file(filename, self.sound_paths)
+        if filename is None:
+            filename = name
+
+        # Check cache first
+        if name in self.sound_cache:
+            self.stats["cache_hits"] += 1
+            return self.sound_cache[name]
+
+        self.stats["cache_misses"] += 1
+
+        # Find the file
+        file_path = self._find_file(filename, "sound")
         if not file_path:
-            print(f"Sound file not found: {filename}")
+            print(f"Warning: Could not find sound file: {filename}")
+            self.stats["failed_loads"] += 1
             return None
-        
+
         try:
             sound = pygame.mixer.Sound(file_path)
-            self.sounds[name] = sound
-            print(f"Loaded sound: {name} from {file_path}")
+            self.sound_cache[name] = sound
+            self.stats["sounds_loaded"] += 1
+            print(f"Loaded sound: {filename} -> {file_path}")
             return sound
-            
+
         except pygame.error as e:
-            print(f"Error loading sound {file_path}: {e}")
+            print(f"Failed to load sound {filename}: {e}")
+            self.stats["failed_loads"] += 1
             return None
-    
-    def get_sound(self, name: str) -> Optional[pygame.mixer.Sound]:
+
+    def load_music(self, name: str, filename: str = None) -> bool:
         """
-        Get a loaded sound by name.
-        
+        Load music for background playback.
+
         Args:
-            name: Name of the sound
-            
+            name: Cache key for the music
+            filename: Filename to load (defaults to name if not provided)
+
         Returns:
-            The pygame Sound or None if not found
+            True if loaded successfully, False otherwise
         """
-        return self.sounds.get(name)
-    
-    def load_data(self, name: str, filename: str) -> Any:
-        """
-        Load a JSON data file.
-        
-        Args:
-            name: Identifier for the data
-            filename: Filename of the JSON file
-            
-        Returns:
-            The loaded data structure
-        """
-        if name in self.data:
-            return self.data[name]
-        
-        file_path = self._find_file(filename, self.data_paths)
+        if filename is None:
+            filename = name
+
+        # Find the file
+        file_path = self._find_file(filename, "music")
         if not file_path:
-            print(f"Data file not found: {filename}")
-            self.data[name] = {}
-            return {}
-        
+            print(f"Warning: Could not find music file: {filename}")
+            self.stats["failed_loads"] += 1
+            return False
+
         try:
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-            
-            self.data[name] = data
-            print(f"Loaded data: {name} from {file_path}")
-            return data
-            
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"Error loading data {file_path}: {e}")
-            self.data[name] = {}
-            return {}
-    
-    def get_data(self, name: str) -> Any:
+            # Music is streamed, not cached in memory
+            self.music_cache[name] = file_path
+            print(f"Registered music: {filename} -> {file_path}")
+            return True
+
+        except Exception as e:
+            print(f"Failed to register music {filename}: {e}")
+            self.stats["failed_loads"] += 1
+            return False
+
+    def get_image(self, name: str) -> Optional[pygame.Surface]:
+        """Get a cached image by name."""
+        return self.image_cache.get(name)
+
+    def get_sound(self, name: str) -> Optional[pygame.mixer.Sound]:
+        """Get a cached sound by name."""
+        return self.sound_cache.get(name)
+
+    def get_music_path(self, name: str) -> Optional[str]:
+        """Get a music file path by name."""
+        return self.music_cache.get(name)
+
+    def preload_assets(self, asset_config: Dict[str, List[str]]):
         """
-        Get loaded data by name.
-        
+        Preload a batch of assets.
+
         Args:
-            name: Name of the data
-            
-        Returns:
-            The data or None if not found
-        """
-        return self.data.get(name)
-    
-    def load_font(self, name: str, filename: str = None, size: int = 24) -> pygame.font.Font:
-        """
-        Load a font asset.
-        
-        Args:
-            name: Identifier for the font
-            filename: Filename of the font (None for system default)
-            size: Font size
-            
-        Returns:
-            The loaded pygame Font
-        """
-        font_key = f"{name}_{size}"
-        if font_key in self.fonts:
-            return self.fonts[font_key]
-        
-        if filename:
-            file_path = self._find_file(filename, self.font_paths)
-            if file_path:
-                try:
-                    font = pygame.font.Font(file_path, size)
-                    self.fonts[font_key] = font
-                    print(f"Loaded font: {name} from {file_path}")
-                    return font
-                except pygame.error as e:
-                    print(f"Error loading font {file_path}: {e}")
-        
-        # Fall back to system default font
-        font = pygame.font.Font(None, size)
-        self.fonts[font_key] = font
-        return font
-    
-    def get_font(self, name: str, size: int = 24) -> Optional[pygame.font.Font]:
-        """
-        Get a loaded font by name and size.
-        
-        Args:
-            name: Name of the font
-            size: Font size
-            
-        Returns:
-            The pygame Font or None if not found
-        """
-        font_key = f"{name}_{size}"
-        return self.fonts.get(font_key)
-    
-    def preload_assets(self, asset_list: Dict[str, Any]):
-        """
-        Preload a list of assets from a configuration.
-        
-        Args:
-            asset_list: Dictionary defining assets to load
+            asset_config: Dictionary with asset types as keys and lists of filenames as values
         """
         print("Preloading assets...")
-        
-        # Load images
-        if "images" in asset_list:
-            for name, filename in asset_list["images"].items():
-                self.load_image(name, filename)
-        
-        # Load sounds
-        if "sounds" in asset_list:
-            for name, filename in asset_list["sounds"].items():
-                self.load_sound(name, filename)
-        
-        # Load data
-        if "data" in asset_list:
-            for name, filename in asset_list["data"].items():
-                self.load_data(name, filename)
-        
-        # Load fonts
-        if "fonts" in asset_list:
-            for name, config in asset_list["fonts"].items():
-                if isinstance(config, dict):
-                    filename = config.get("filename")
-                    size = config.get("size", 24)
-                    self.load_font(name, filename, size)
-                else:
-                    self.load_font(name, config)
-        
-        print("Asset preloading complete")
-    
-    def unload_asset(self, asset_type: str, name: str):
-        """
-        Unload a specific asset from memory.
-        
-        Args:
-            asset_type: Type of asset ('image', 'sound', 'data', 'font')
-            name: Name of the asset to unload
-        """
-        if asset_type == "image" and name in self.images:
-            del self.images[name]
-        elif asset_type == "sound" and name in self.sounds:
-            del self.sounds[name]
-        elif asset_type == "data" and name in self.data:
-            del self.data[name]
-        elif asset_type == "font":
-            # Remove all font sizes for this name
-            keys_to_remove = [key for key in self.fonts.keys() if key.startswith(f"{name}_")]
-            for key in keys_to_remove:
-                del self.fonts[key]
-    
+
+        for asset_type, filenames in asset_config.items():
+            for filename in filenames:
+                if asset_type == "image":
+                    self.load_image(filename)
+                elif asset_type == "sound":
+                    self.load_sound(filename)
+                elif asset_type == "music":
+                    self.load_music(filename)
+
+    def list_available_files(self, asset_type: str) -> List[str]:
+        """List all available files of a specific type in search paths."""
+        available_files = []
+        extensions = self.supported_formats.get(asset_type, [])
+
+        for search_path in self.search_paths.get(asset_type, []):
+            if os.path.exists(search_path):
+                try:
+                    for filename in os.listdir(search_path):
+                        file_path = os.path.join(search_path, filename)
+                        if os.path.isfile(file_path):
+                            file_ext = os.path.splitext(filename)[1].lower()
+                            if file_ext in extensions:
+                                available_files.append(filename)
+                except OSError:
+                    continue
+
+        return list(set(available_files))  # Remove duplicates
+
+    def clear_cache(self, asset_type: str = None):
+        """Clear asset cache for a specific type or all types."""
+        if asset_type == "image" or asset_type is None:
+            self.image_cache.clear()
+        if asset_type == "sound" or asset_type is None:
+            self.sound_cache.clear()
+        if asset_type == "music" or asset_type is None:
+            self.music_cache.clear()
+
+        print(f"Cleared {asset_type or 'all'} asset cache")
+
     def clear_all(self):
-        """
-        Clear all loaded assets from memory.
-        """
-        self.images.clear()
-        self.sounds.clear()
-        self.data.clear()
-        self.fonts.clear()
-        print("All assets cleared from memory")
+        """Clear all caches and reset statistics."""
+        self.clear_cache()
+        self.stats = {
+            "images_loaded": 0,
+            "sounds_loaded": 0,
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "failed_loads": 0
+        }
+
+    def get_loading_stats(self) -> Dict[str, int]:
+        """Get asset loading statistics."""
+        return self.stats.copy()
+
+    def get_cache_info(self) -> Dict[str, int]:
+        """Get information about cached assets."""
+        return {
+            "images_cached": len(self.image_cache),
+            "sounds_cached": len(self.sound_cache),
+            "music_registered": len(self.music_cache)
+        }
