@@ -39,6 +39,7 @@ class GameObject:
         
         # Component system (simple tag-based for now)
         self.tags: List[str] = []
+        self.components: List = []
     
     def update(self, delta_time: float):
         """
@@ -189,6 +190,59 @@ class GameObject:
             return self.parent.get_world_rotation() + self.transform.rotation
         return self.transform.rotation
     
+    def add_component(self, component):
+        """
+        Add a component to this GameObject.
+        
+        Args:
+            component: The component to add
+        """
+        if component not in self.components:
+            self.components.append(component)
+            component.game_object = self
+            if hasattr(component, 'on_attach'):
+                component.on_attach()
+    
+    def remove_component(self, component):
+        """
+        Remove a component from this GameObject.
+        
+        Args:
+            component: The component to remove
+        """
+        if component in self.components:
+            if hasattr(component, 'on_detach'):
+                component.on_detach()
+            component.game_object = None
+            self.components.remove(component)
+    
+    def get_component(self, component_type):
+        """
+        Get the first component of the specified type.
+        
+        Args:
+            component_type: The type of component to find
+            
+        Returns:
+            The component or None if not found
+        """
+        for component in self.components:
+            if isinstance(component, component_type):
+                return component
+        return None
+    
+    def get_components(self, component_type):
+        """
+        Get all components of the specified type.
+        
+        Args:
+            component_type: The type of components to find
+            
+        Returns:
+            List of components of the specified type
+        """
+        return [component for component in self.components if isinstance(component, component_type)]
+    
     def destroy(self):
         """
         Mark this GameObject for destruction and remove from parent.
@@ -198,6 +252,10 @@ class GameObject:
         
         if self.scene:
             self.scene.remove_object(self)
+        
+        # Remove all components
+        for component in self.components.copy():
+            self.remove_component(component)
         
         # Destroy all children
         for child in self.children.copy():

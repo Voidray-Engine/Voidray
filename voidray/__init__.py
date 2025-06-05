@@ -1,11 +1,3 @@
-"""
-VoidRay 2D Game Engine
-A lightweight, easy-to-use 2D game engine built with Python and Pygame.
-
-Author: VoidRay Development Team
-Version: 1.0.0
-"""
-
 from .core.engine import Engine
 from .core.game_object import GameObject
 from .core.scene import Scene
@@ -17,8 +9,8 @@ from .audio.audio_manager import AudioManager
 from .math.vector2 import Vector2
 from .math.transform import Transform
 
-__version__ = "1.0.0"
-__author__ = "VoidRay Development Team"
+__version__ = "1.2.1"
+__author__ = "VoidRay Team"
 
 # Main exports for easy importing
 __all__ = [

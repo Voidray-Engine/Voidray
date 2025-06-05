@@ -52,18 +52,23 @@ class PhysicsEngine:
     
     def update(self, delta_time: float):
         """
-        Update physics simulation.
+        Update physics simulation with optimizations.
         
         Args:
             delta_time: Time elapsed since last frame in seconds
         """
-        # Update all colliders
-        for collider in self.colliders:
-            if collider.game_object and collider.game_object.active:
-                self._update_collider(collider, delta_time)
+        # Performance optimization: Skip physics updates if no active colliders
+        active_colliders = [c for c in self.colliders if c.game_object and c.game_object.active]
         
-        # Check for collisions
-        self._check_collisions()
+        if not active_colliders:
+            return
+        
+        # Update all active colliders
+        for collider in active_colliders:
+            self._update_collider(collider, delta_time)
+        
+        # Optimized collision detection
+        self._check_collisions_optimized(active_colliders)
     
     def _update_collider(self, collider: Collider, delta_time: float):
         """
@@ -268,3 +273,115 @@ class PhysicsEngine:
                             closest_collider = collider
         
         return closest_collider
+    
+    def _check_collisions_optimized(self, active_colliders: List[Collider]):
+        """
+        Optimized collision detection using spatial partitioning concepts.
+        
+        Args:
+            active_colliders: List of active colliders to check
+        """
+        # Simple spatial optimization: group colliders by rough grid
+        grid_size = 200
+        collision_grid = {}
+        
+        # Group colliders by grid cell
+        for collider in active_colliders:
+            if collider.game_object:
+                pos = collider.get_world_position()
+                grid_x = int(pos.x // grid_size)
+                grid_y = int(pos.y // grid_size)
+                grid_key = (grid_x, grid_y)
+                
+                if grid_key not in collision_grid:
+                    collision_grid[grid_key] = []
+                collision_grid[grid_key].append(collider)
+        
+        # Check collisions within each grid cell and adjacent cells
+        checked_pairs = set()
+        
+        for grid_key, colliders in collision_grid.items():
+            # Check collisions within this cell
+            for i in range(len(colliders)):
+                for j in range(i + 1, len(colliders)):
+                    collider1, collider2 = colliders[i], colliders[j]
+                    pair = tuple(sorted([id(collider1), id(collider2)]))
+                    
+                    if pair not in checked_pairs:
+                        checked_pairs.add(pair)
+                        self._process_collision_pair(collider1, collider2)
+            
+            # Check adjacent cells to avoid missing edge cases
+            grid_x, grid_y = grid_key
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    if dx == 0 and dy == 0:
+                        continue
+                    
+                    adjacent_key = (grid_x + dx, grid_y + dy)
+                    if adjacent_key in collision_grid:
+                        for collider1 in colliders:
+                            for collider2 in collision_grid[adjacent_key]:
+                                pair = tuple(sorted([id(collider1), id(collider2)]))
+                                
+                                if pair not in checked_pairs:
+                                    checked_pairs.add(pair)
+                                    self._process_collision_pair(collider1, collider2)
+    
+    def _process_collision_pair(self, collider1: Collider, collider2: Collider):
+        """
+        Process a collision pair with all checks.
+        
+        Args:
+            collider1: First collider
+            collider2: Second collider
+        """
+        # Skip if both are static
+        if collider1.is_static and collider2.is_static:
+            return
+        
+        # Skip if either object is inactive
+        if (not collider1.game_object or not collider1.game_object.active or
+            not collider2.game_object or not collider2.game_object.active):
+            return
+        
+        # Check collision
+        if self._check_collision(collider1, collider2):
+            # Call collision callbacks
+            for callback in self.collision_callbacks:
+                callback(collider1, collider2)
+            
+            # Call individual collider callbacks
+            if collider1.on_collision:
+                collider1.on_collision(collider2)
+            if collider2.on_collision:
+                collider2.on_collision(collider1)
+            
+            # Resolve collision if needed
+            if not collider1.is_trigger and not collider2.is_trigger:
+                self._resolve_collision(collider1, collider2)
+    
+    def optimize_performance(self):
+        """
+        Optimize physics performance by removing inactive colliders.
+        """
+        # Remove colliders from inactive game objects
+        active_colliders = []
+        for collider in self.colliders:
+            if collider.game_object and collider.game_object.active:
+                active_colliders.append(collider)
+        
+        removed_count = len(self.colliders) - len(active_colliders)
+        self.colliders = active_colliders
+        
+        if removed_count > 0:
+            print(f"Physics optimization: Removed {removed_count} inactive colliders")
+    
+    def set_spatial_grid_size(self, size: float):
+        """
+        Set the spatial grid size for collision optimization.
+        
+        Args:
+            size: Grid cell size in world units
+        """
+        self.spatial_grid_size = size

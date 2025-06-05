@@ -53,6 +53,19 @@ class Camera(GameObject):
         self.bounds_min = min_pos
         self.bounds_max = max_pos
     
+    def set_smooth_follow(self, enabled: bool, speed: float = 5.0):
+        """
+        Enable or disable smooth camera following.
+        
+        Args:
+            enabled: Whether to enable smooth following
+            speed: Follow speed (higher = more responsive)
+        """
+        if enabled:
+            self.follow_speed = speed
+        else:
+            self.follow_speed = 0  # Instant following
+    
     def shake(self, intensity: float, duration: float):
         """
         Add camera shake effect.

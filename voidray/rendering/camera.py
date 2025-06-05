@@ -5,6 +5,7 @@ Handles view transformations and provides different camera modes
 for 2D rendering including following objects and screen bounds.
 """
 
+import math
 from typing import Optional
 from ..core.component import Component
 from ..math.vector2 import Vector2
@@ -40,6 +41,12 @@ class Camera(Component):
         self.use_bounds = False
         self.bounds_min = Vector2.zero()
         self.bounds_max = Vector2.zero()
+        
+        # 2.5D specific properties
+        self.field_of_view = 60.0  # FOV in degrees
+        self.height = 32.0  # Camera height for 2.5D
+        self.pitch = 0.0  # Up/down angle
+        self.rendering_mode = "2D"
     
     def set_screen_size(self, width: int, height: int) -> None:
         """
@@ -240,3 +247,86 @@ class Camera(Component):
         clamped_y = max(actual_min_y, min(actual_max_y, position.y))
         
         return Vector2(clamped_x, clamped_y)
+    
+    def set_2_5d_properties(self, fov: float = 60.0, height: float = 32.0, pitch: float = 0.0) -> None:
+        """
+        Set 2.5D camera properties.
+        
+        Args:
+            fov: Field of view in degrees
+            height: Camera height above ground
+            pitch: Vertical look angle in degrees
+        """
+        self.field_of_view = fov
+        self.height = height
+        self.pitch = max(-45, min(45, pitch))  # Clamp pitch
+        self.rendering_mode = "2.5D"
+    
+    def set_rendering_mode(self, mode: str) -> None:
+        """
+        Set camera rendering mode.
+        
+        Args:
+            mode: "2D" or "2.5D"
+        """
+        if mode in ["2D", "2.5D"]:
+            self.rendering_mode = mode
+    
+    def get_3d_forward_vector(self) -> Vector2:
+        """
+        Get the forward direction vector for 2.5D rendering.
+        
+        Returns:
+            Forward direction vector
+        """
+        if not self.transform:
+            return Vector2(1, 0)
+        
+        angle_rad = math.radians(self.transform.rotation)
+        return Vector2(math.cos(angle_rad), math.sin(angle_rad))
+    
+    def get_3d_right_vector(self) -> Vector2:
+        """
+        Get the right direction vector for 2.5D rendering.
+        
+        Returns:
+            Right direction vector
+        """
+        forward = self.get_3d_forward_vector()
+        return Vector2(-forward.y, forward.x)  # Perpendicular to forward
+    
+    def look_at(self, target_position: Vector2, smooth: bool = False, delta_time: float = 0) -> None:
+        """
+        Make camera look at a target position.
+        
+        Args:
+            target_position: Position to look at
+            smooth: Whether to smoothly rotate
+            delta_time: Time for smooth rotation
+        """
+        if not self.transform:
+            return
+        
+        direction = target_position - self.transform.position
+        target_angle = math.degrees(math.atan2(direction.y, direction.x))
+        
+        if smooth and delta_time > 0:
+            current_angle = self.transform.rotation
+            angle_diff = target_angle - current_angle
+            
+            # Normalize angle difference
+            while angle_diff > 180:
+                angle_diff -= 360
+            while angle_diff < -180:
+                angle_diff += 360
+            
+            # Smooth rotation
+            rotation_speed = 180  # degrees per second
+            max_rotation = rotation_speed * delta_time
+            
+            if abs(angle_diff) <= max_rotation:
+                self.transform.rotation = target_angle
+            else:
+                self.transform.rotation += max_rotation * (1 if angle_diff > 0 else -1)
+        else:
+            self.transform.rotation = target_angle

@@ -6,7 +6,7 @@ The main engine class that manages the game loop, systems, and overall execution
 import pygame
 import sys
 from typing import Optional
-from ..graphics.renderer import Renderer
+from ..rendering.renderer import Renderer
 from ..input.input_manager import InputManager
 from ..physics.physics_engine import PhysicsEngine
 from ..audio.audio_manager import AudioManager
@@ -82,10 +82,25 @@ class Engine:
         self.running = True
         print("Starting VoidRay engine...")
         
+        # Performance tracking
+        frame_count = 0
+        performance_timer = 0
+        
         while self.running:
             # Calculate delta time
             dt = self.clock.tick(self.target_fps)
             self.delta_time = dt / 1000.0  # Convert to seconds
+            
+            # Performance monitoring
+            frame_count += 1
+            performance_timer += self.delta_time
+            
+            if performance_timer >= 1.0:  # Every second
+                actual_fps = frame_count / performance_timer
+                if actual_fps < self.target_fps * 0.8:  # If FPS drops below 80% of target
+                    self._optimize_performance()
+                frame_count = 0
+                performance_timer = 0
             
             # Handle input events
             self._handle_events()
@@ -94,9 +109,8 @@ class Engine:
             if self.current_scene:
                 self.current_scene.update(self.delta_time)
             
-            # Update physics (only for collision detection, not movement)
-            # Objects handle their own movement in update() methods
-            self.physics_engine._check_collisions()
+            # Update physics with optimization
+            self.physics_engine.update(self.delta_time)
             
             # Render frame
             self.renderer.clear()
@@ -157,3 +171,55 @@ class Engine:
             Delta time in seconds
         """
         return self.delta_time
+    
+    def set_rendering_mode(self, mode: str) -> None:
+        """
+        Set the rendering mode for the engine.
+        
+        Args:
+            mode: "2D" for traditional 2D, "2.5D" for pseudo-3D rendering
+        """
+        self.renderer.set_rendering_mode(mode)
+        print(f"Rendering mode set to: {mode}")
+    
+    def _optimize_performance(self) -> None:
+        """
+        Optimize performance when FPS drops.
+        """
+        # Clear sprite cache to free memory
+        self.renderer.clear_sprite_cache()
+        
+        # Reduce render distance in 2.5D mode
+        if self.renderer.rendering_mode == "2.5D":
+            current_distance = self.renderer.render_distance
+            self.renderer.set_render_distance(current_distance * 0.8)
+            print(f"Performance optimization: Reduced render distance to {self.renderer.render_distance}")
+        
+        # Optimize physics
+        self.physics_engine.optimize_performance()
+    
+    def set_target_fps(self, fps: int) -> None:
+        """
+        Set the target FPS.
+        
+        Args:
+            fps: Target frames per second
+        """
+        self.target_fps = fps
+        print(f"Target FPS set to: {fps}")
+    
+    def get_performance_info(self) -> dict:
+        """
+        Get performance information.
+        
+        Returns:
+            Dictionary with performance metrics
+        """
+        return {
+            'fps': self.get_fps(),
+            'delta_time': self.delta_time,
+            'target_fps': self.target_fps,
+            'rendering_mode': self.renderer.rendering_mode,
+            'active_objects': len(self.current_scene.game_objects) if self.current_scene else 0,
+            'colliders': len(self.physics_engine.colliders)
+        }
