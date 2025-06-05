@@ -9,17 +9,15 @@ Version: 1.0.0
 from .core.engine import Engine
 from .core.game_object import GameObject
 from .core.scene import Scene
-from .core.scene_manager import SceneManager
 from .graphics.sprite import Sprite
 from .graphics.camera import Camera
-from .graphics.renderer import Renderer, Color
 from .input.input_manager import InputManager, Keys, MouseButtons
 from .physics.collider import Collider, RectCollider, CircleCollider
 from .audio.audio_manager import AudioManager
 from .math.vector2 import Vector2
 from .math.transform import Transform
 
-__version__ = "1.1.0"
+__version__ = "1.0.0"
 __author__ = "VoidRay Development Team"
 
 # Main exports for easy importing
@@ -27,11 +25,8 @@ __all__ = [
     'Engine',
     'GameObject', 
     'Scene',
-    'SceneManager',
     'Sprite',
     'Camera',
-    'Renderer',
-    'Color',
     'InputManager',
     'Keys',
     'MouseButtons',
