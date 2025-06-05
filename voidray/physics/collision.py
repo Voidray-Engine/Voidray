@@ -26,16 +26,16 @@ class Collider(Component):
     def on_attach(self) -> None:
         """Called when attached to a game object."""
         # Register with physics system if available
-        if hasattr(self.game_object, '_scene') and self.game_object._scene:
-            engine = self.game_object._scene.engine
+        if hasattr(self.game_object, 'scene') and self.game_object.scene:
+            engine = self.game_object.scene.engine
             if engine and hasattr(engine, 'physics_system'):
                 engine.physics_system.add_collider(self)
     
     def on_detach(self) -> None:
         """Called when detached from a game object."""
         # Unregister from physics system if available
-        if hasattr(self.game_object, '_scene') and self.game_object._scene:
-            engine = self.game_object._scene.engine
+        if hasattr(self.game_object, 'scene') and self.game_object.scene:
+            engine = self.game_object.scene.engine
             if engine and hasattr(engine, 'physics_system'):
                 engine.physics_system.remove_collider(self)
     

@@ -51,6 +51,11 @@ class GameObject:
         if not self.active:
             return
         
+        # Update all components
+        for component in self.components:
+            if component.enabled and hasattr(component, 'update'):
+                component.update(delta_time)
+        
         # Update all children
         for child in self.children:
             child.update(delta_time)

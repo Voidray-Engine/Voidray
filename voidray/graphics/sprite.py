@@ -64,6 +64,19 @@ class Sprite(GameObject):
         self.original_surface.fill(color)
         self.surface = self.original_surface.copy()
     
+    def create_colored_circle(self, radius: int, color: tuple):
+        """
+        Create a simple colored circle as the sprite.
+        
+        Args:
+            radius: Circle radius
+            color: RGB color tuple
+        """
+        size = radius * 2
+        self.original_surface = pygame.Surface((size, size), pygame.SRCALPHA)
+        pygame.draw.circle(self.original_surface, color, (radius, radius), radius)
+        self.surface = self.original_surface.copy()
+    
     def set_color(self, color: tuple):
         """
         Set the color tint for this sprite.

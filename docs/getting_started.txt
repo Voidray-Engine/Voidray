@@ -1,117 +1,131 @@
-VoidRay 2D Game Engine - Getting Started Guide
-===============================================
+
+VoidRay Game Engine - Getting Started Guide
+==========================================
 
 Welcome to VoidRay, a lightweight 2D game engine built with Python and Pygame!
-This guide will help you get started with creating your first game using VoidRay.
 
-Table of Contents
------------------
-1. Installation
-2. Basic Concepts
-3. Your First Game
-4. Key Engine Systems
-5. Next Steps
-
-1. Installation
----------------
-
-Prerequisites:
-- Python 3.8 or higher
-- pip (Python package installer)
-
-Required Dependencies:
-- pygame (automatically installed with VoidRay)
-
-Installation Steps:
-1. Download or clone the VoidRay engine files
-2. Navigate to the VoidRay directory
-3. Install using pip:
-   pip install -e .
-
-Or install dependencies manually:
-   pip install pygame
-
-2. Basic Concepts
------------------
-
-VoidRay uses a component-based architecture with the following core concepts:
-
-Engine:
-- The main engine class that manages the game loop and systems
-- Handles window creation, input, rendering, and physics
-
-Scene:
-- A container for game objects in a specific game state or level
-- Manages object lifecycle and updates
-
-GameObject:
-- The fundamental entity in your game world
-- Can have multiple components attached to provide functionality
-
-Component:
-- Modular pieces of functionality that can be attached to GameObjects
-- Examples: Sprite (for rendering), Rigidbody (for physics), custom scripts
-
-Transform:
-- Every GameObject has a Transform that defines its position, rotation, and scale
-- Supports hierarchical transformations (parent-child relationships)
-
-3. Your First Game
+SYSTEM REQUIREMENTS
 ------------------
+- Python 3.8 or higher
+- Pygame 2.0+ (automatically installed)
+- Cross-platform: Windows, macOS, Linux
 
-Here's a minimal example to get you started:
+INSTALLATION
+-----------
+VoidRay comes ready to use! Just make sure you have Python 3.8+ installed.
+The engine will automatically install Pygame when you first run it.
+
+YOUR FIRST GAME IN 5 MINUTES
+-----------------------------
+Let's create a simple game where you control a blue square with arrow keys:
 
 ```python
 import voidray
-from voidray import *
+from voidray import Scene, Sprite, Vector2, Keys
+from voidray.graphics.renderer import Color
 
-# Create a simple player controller component
-class PlayerController(Component):
+class Player(Sprite):
     def __init__(self):
-        super().__init__()
-        self.speed = 200.0
-    
-    def on_attach(self):
-        self.input_manager = self.game_object._scene.engine.input_manager
+        super().__init__("Player")
+        self.create_colored_rect(40, 40, Color.BLUE)
+        self.speed = 200
     
     def update(self, delta_time):
-        movement = self.input_manager.get_movement_input()
-        velocity = movement * self.speed * delta_time
-        self.transform.translate(velocity)
+        super().update(delta_time)
+        
+        # Get input
+        input_manager = voidray.get_engine().input_manager
+        velocity = Vector2.zero()
+        
+        if input_manager.is_key_pressed(Keys.LEFT):
+            velocity.x = -self.speed
+        if input_manager.is_key_pressed(Keys.RIGHT):
+            velocity.x = self.speed
+        if input_manager.is_key_pressed(Keys.UP):
+            velocity.y = -self.speed
+        if input_manager.is_key_pressed(Keys.DOWN):
+            velocity.y = self.speed
+        
+        # Move player
+        self.transform.position += velocity * delta_time
 
-# Create a game scene
-class MyGameScene(Scene):
+class GameScene(Scene):
     def on_enter(self):
-        # Create a player game object
-        player = GameObject("Player")
+        super().on_enter()
+        
+        # Create player
+        player = Player()
         player.transform.position = Vector2(400, 300)
-        
-        # Add a sprite component
-        player_texture = self.engine.asset_loader.create_texture(
-            "player", 32, 32, Color.BLUE
-        )
-        sprite = Sprite(player_texture)
-        player.add_component(sprite)
-        
-        # Add the player controller
-        controller = PlayerController()
-        player.add_component(controller)
-        
-        # Add to scene
-        self.add_game_object(player)
+        self.add_object(player)
 
-# Main function
+def init_game():
+    # Create and set our scene
+    game_scene = GameScene()
+    voidray.register_scene("game", game_scene)
+    voidray.set_scene("game")
+
 def main():
-    # Create the engine
-    engine = Engine(800, 600, "My First VoidRay Game")
+    # Configure the engine
+    voidray.configure(
+        width=800, 
+        height=600, 
+        title="My First Game", 
+        fps=60
+    )
     
-    # Create and load the scene
-    scene = MyGameScene()
-    engine.add_scene("main", scene)
-    engine.load_scene("main")
+    # Register our initialization function
+    voidray.on_init(init_game)
     
-    # Run the game
-    engine.run()
+    # Start the engine
+    voidray.start()
 
 if __name__ == "__main__":
     main()
+```
+
+That's it! You now have a working game with:
+- A player that moves with arrow keys
+- Smooth movement using delta time
+- Proper game structure with scenes
+
+CORE CONCEPTS
+-------------
+
+1. ENGINE SETUP
+   - Use voidray.configure() to set up your game window
+   - Use voidray.on_init() to register your setup function
+   - Use voidray.start() to begin the game loop
+
+2. SCENES
+   - Scenes are like levels or screens in your game
+   - Create classes that inherit from Scene
+   - Override on_enter() to set up your scene
+   - Register scenes with voidray.register_scene()
+   - Switch scenes with voidray.set_scene()
+
+3. GAME OBJECTS
+   - Sprites are visual game objects that can move and interact
+   - Create classes that inherit from Sprite
+   - Use create_colored_rect() or create_colored_circle() for simple shapes
+   - Override update() for custom behavior
+
+4. INPUT HANDLING
+   - Get the input manager: voidray.get_engine().input_manager
+   - Check key presses: input_manager.is_key_pressed(Keys.LEFT)
+   - Check single key press: input_manager.is_key_just_pressed(Keys.SPACE)
+
+5. MOVEMENT & POSITIONING
+   - Every game object has a transform.position (Vector2)
+   - Use delta_time for smooth, frame-rate independent movement
+   - Vector2.zero() creates a zero vector
+   - Add vectors: position += velocity * delta_time
+
+WHAT'S NEXT?
+-----------
+- Learn about the physics system (docs/physics_guide.txt)
+- Add collision detection to your game
+- Create enemies and power-ups
+- Add sound effects and music
+- Check out the examples folder for more complex games
+
+The engine handles all the complex stuff - you just focus on making your game fun!

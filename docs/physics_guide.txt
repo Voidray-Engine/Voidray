@@ -1,0 +1,311 @@
+
+VoidRay Game Engine - Physics Guide
+===================================
+
+VoidRay includes a built-in physics system that handles movement, collisions, and realistic interactions. This guide will teach you how to use it effectively.
+
+PHYSICS BASICS
+==============
+
+The physics system consists of two main components:
+1. Rigidbody - Handles movement, forces, and physics properties
+2. Colliders - Handle collision detection (BoxCollider, CircleCollider)
+
+ADDING PHYSICS TO SPRITES
+=========================
+
+Step 1: Create a Rigidbody
+--------------------------
+```python
+class Ball(Sprite):
+    def __init__(self):
+        super().__init__("Ball")
+        self.create_colored_circle(20, Color.RED)
+        
+        # Add physics
+        self.rigidbody = Rigidbody()
+        self.rigidbody.set_mass(1.0)  # Heavier = harder to move
+        self.add_component(self.rigidbody)
+```
+
+Step 2: Add a Collider
+----------------------
+```python
+        # Add collision detection
+        self.collider = CircleCollider(20)  # Radius of 20
+        self.add_component(self.collider)
+```
+
+For rectangular objects, use BoxCollider:
+```python
+        self.collider = BoxCollider(40, 30)  # Width=40, Height=30
+```
+
+MOVEMENT WITH PHYSICS
+====================
+
+Direct Velocity Control
+----------------------
+```python
+# Set velocity directly
+velocity = Vector2(100, -200)  # Right 100, Up 200
+self.rigidbody.set_velocity(velocity)
+```
+
+Applying Forces
+--------------
+```python
+# Continuous force (like wind or thrust)
+force = Vector2(50, 0)  # Push right with 50 force
+self.rigidbody.add_force(force)
+
+# Instant impulse (like jumping or hitting)
+impulse = Vector2(0, -500)  # Jump up
+self.rigidbody.add_impulse(impulse)
+```
+
+PHYSICS PROPERTIES
+==================
+
+Mass
+----
+Heavier objects are harder to move:
+```python
+self.rigidbody.set_mass(2.0)  # Default is 1.0
+```
+
+Bounciness
+----------
+How much objects bounce off each other (0 = no bounce, 1 = perfect bounce):
+```python
+self.rigidbody.set_bounciness(0.8)  # Bouncy ball
+```
+
+Drag
+----
+Air resistance that slows objects down:
+```python
+self.rigidbody.set_drag(0.1)  # Light drag
+```
+
+GRAVITY
+=======
+
+Set global gravity for all rigidbodies:
+```python
+def init_game():
+    engine = voidray.get_engine()
+    engine.physics_system.set_gravity(500)  # Downward gravity
+```
+
+Gravity affects all objects with rigidbodies. Use negative values for upward gravity.
+
+COLLISION DETECTION
+==================
+
+Basic Collision Callback
+------------------------
+```python
+class Player(Sprite):
+    def __init__(self):
+        super().__init__("Player")
+        self.create_colored_rect(40, 40, Color.BLUE)
+        
+        self.collider = BoxCollider(40, 40)
+        self.collider.on_collision = self.on_collision
+        self.add_component(self.collider)
+    
+    def on_collision(self, other, collision_info):
+        print(f"Player hit {other.game_object.name}")
+```
+
+Advanced Collision Response
+--------------------------
+```python
+def on_collision(self, other, collision_info):
+    # Check what we hit
+    if "Enemy" in other.game_object.name:
+        # Take damage
+        self.health -= 10
+        print("Ouch!")
+    
+    elif "Powerup" in other.game_object.name:
+        # Collect powerup
+        other.game_object.destroy()
+        self.score += 100
+    
+    elif "Ball" in other.game_object.name:
+        # Push the ball away
+        ball_rb = other.game_object.get_component(Rigidbody)
+        if ball_rb:
+            push_direction = (other.game_object.transform.position - 
+                            self.transform.position).normalized()
+            ball_rb.add_impulse(push_direction * 300)
+```
+
+COMPLETE PHYSICS EXAMPLES
+=========================
+
+Bouncing Ball Game
+-----------------
+```python
+import voidray
+from voidray import Scene, Sprite, Vector2, Keys, CircleCollider, Rigidbody
+from voidray.graphics.renderer import Color
+import random
+
+class BouncyBall(Sprite):
+    def __init__(self):
+        super().__init__("Ball")
+        self.create_colored_circle(15, Color.YELLOW)
+        
+        # Physics setup
+        self.rigidbody = Rigidbody()
+        self.rigidbody.set_mass(1.0)
+        self.rigidbody.set_bounciness(0.9)  # Very bouncy
+        self.rigidbody.set_drag(0.01)       # Almost no drag
+        self.add_component(self.rigidbody)
+        
+        # Collision
+        self.collider = CircleCollider(15)
+        self.add_component(self.collider)
+        
+        # Random starting velocity
+        velocity = Vector2(
+            random.uniform(-200, 200),
+            random.uniform(-300, -100)
+        )
+        self.rigidbody.set_velocity(velocity)
+    
+    def update(self, delta_time):
+        super().update(delta_time)
+        
+        # Bounce off screen edges
+        engine = voidray.get_engine()
+        pos = self.transform.position
+        vel = self.rigidbody.velocity
+        
+        if pos.x <= 15 or pos.x >= engine.width - 15:
+            vel.x = -vel.x * 0.9
+        if pos.y >= engine.height - 15:
+            vel.y = -vel.y * 0.9
+            
+        self.rigidbody.set_velocity(vel)
+
+class GameScene(Scene):
+    def on_enter(self):
+        super().on_enter()
+        
+        # Create multiple bouncing balls
+        for i in range(5):
+            ball = BouncyBall()
+            ball.transform.position = Vector2(
+                random.randint(50, 750),
+                random.randint(50, 200)
+            )
+            self.add_object(ball)
+
+def init_game():
+    # Enable gravity
+    engine = voidray.get_engine()
+    engine.physics_system.set_gravity(300)
+    
+    scene = GameScene()
+    voidray.register_scene("game", scene)
+    voidray.set_scene("game")
+
+def main():
+    voidray.configure(800, 600, "Bouncy Balls", 60)
+    voidray.on_init(init_game)
+    voidray.start()
+
+if __name__ == "__main__":
+    main()
+```
+
+Player with Physics Movement
+----------------------------
+```python
+class PhysicsPlayer(Sprite):
+    def __init__(self):
+        super().__init__("Player")
+        self.create_colored_rect(30, 30, Color.BLUE)
+        
+        # Physics
+        self.rigidbody = Rigidbody()
+        self.rigidbody.set_mass(2.0)      # Heavier player
+        self.rigidbody.set_drag(5.0)      # High drag for control
+        self.add_component(self.rigidbody)
+        
+        # Collision
+        self.collider = BoxCollider(30, 30)
+        self.add_component(self.collider)
+        
+        self.move_force = 800
+        self.jump_force = 600
+        self.on_ground = False
+    
+    def update(self, delta_time):
+        super().update(delta_time)
+        
+        input_manager = voidray.get_engine().input_manager
+        
+        # Horizontal movement
+        if input_manager.is_key_pressed(Keys.LEFT):
+            self.rigidbody.add_force(Vector2(-self.move_force, 0))
+        if input_manager.is_key_pressed(Keys.RIGHT):
+            self.rigidbody.add_force(Vector2(self.move_force, 0))
+        
+        # Jumping (if on ground)
+        if input_manager.is_key_just_pressed(Keys.SPACE) and self.on_ground:
+            self.rigidbody.add_impulse(Vector2(0, -self.jump_force))
+            self.on_ground = False
+        
+        # Check if on ground (simple ground check)
+        engine = voidray.get_engine()
+        if self.transform.position.y >= engine.height - 40:
+            self.transform.position.y = engine.height - 40
+            self.on_ground = True
+```
+
+TIPS FOR GOOD PHYSICS
+=====================
+
+1. **Start Simple**: Begin with basic movement, then add complexity
+2. **Tune Values**: Experiment with mass, drag, and bounciness values
+3. **Use Appropriate Colliders**: Circles for round objects, boxes for rectangular
+4. **Limit Forces**: Very large forces can make objects behave strangely
+5. **Test Edge Cases**: What happens at screen boundaries? During collisions?
+
+COMMON PHYSICS PATTERNS
+=======================
+
+Making Objects Stop
+------------------
+```python
+# Gradually slow down
+current_velocity = self.rigidbody.velocity
+self.rigidbody.set_velocity(current_velocity * 0.95)
+
+# Or use high drag
+self.rigidbody.set_drag(10.0)
+```
+
+Platform Game Jumping
+---------------------
+```python
+# Only jump when on ground
+if self.on_ground and input_manager.is_key_just_pressed(Keys.SPACE):
+    self.rigidbody.set_velocity(Vector2(self.rigidbody.velocity.x, -jump_speed))
+```
+
+Push Objects Away
+-----------------
+```python
+def push_objects_away(self, center_pos, force_strength):
+    for obj in nearby_objects:
+        direction = (obj.transform.position - center_pos).normalized()
+        obj.rigidbody.add_impulse(direction * force_strength)
+```
+
+Now you're ready to create games with realistic physics interactions!

@@ -375,7 +375,7 @@ class Renderer:
         return False
     
     def draw_wall_segment(self, start_pos: Vector2, end_pos: Vector2, height: float,
-                         color: Color, texture: pygame.Surface = None) -> None:
+                         color, texture: pygame.Surface = None) -> None:
         """
         Draw a wall segment in 2.5D mode (for DOOM-style games).
         
@@ -383,7 +383,7 @@ class Renderer:
             start_pos: Wall start position
             end_pos: Wall end position
             height: Wall height
-            color: Wall color
+            color: Wall color (Color object or RGB tuple)
             texture: Optional wall texture
         """
         if self.rendering_mode != "2.5D" or not self.camera or not self.camera.transform:
@@ -395,10 +395,18 @@ class Renderer:
         self.add_to_render_layer('world', render)
     
     def _render_wall_segment(self, start_pos: Vector2, end_pos: Vector2, height: float,
-                           color: Color, texture: pygame.Surface = None) -> None:
+                           color, texture: pygame.Surface = None) -> None:
         """Render a wall segment using raycasting principles."""
         camera_pos = self.camera.transform.position
         camera_angle = self.camera.transform.rotation
+        
+        # Handle both Color objects and tuples
+        if hasattr(color, 'to_tuple'):
+            base_color = color
+        else:
+            # Convert tuple to Color-like object for shading calculations
+            from ..utils.color import Color
+            base_color = Color(color[0], color[1], color[2])
         
         # Cast rays from camera through each screen column
         for x in range(self.screen_width):
@@ -419,9 +427,9 @@ class Renderer:
                 # Apply distance-based shading
                 shade_factor = max(0.1, 1.0 - hit_distance / self.fog_distance)
                 shaded_color = (
-                    int(color.r * shade_factor),
-                    int(color.g * shade_factor),
-                    int(color.b * shade_factor)
+                    int(base_color.r * shade_factor),
+                    int(base_color.g * shade_factor),
+                    int(base_color.b * shade_factor)
                 )
                 
                 # Draw wall column
@@ -457,7 +465,7 @@ class Renderer:
         
         return None
     
-    def draw_rect(self, position: Vector2, size: Vector2, color: Color, 
+    def draw_rect(self, position: Vector2, size: Vector2, color, 
                   filled: bool = True, width: int = 1, layer: str = 'world') -> None:
         """
         Draw a rectangle.
@@ -465,7 +473,7 @@ class Renderer:
         Args:
             position: Top-left corner position in world space
             size: Width and height of the rectangle
-            color: Color to draw with
+            color: Color to draw with (Color object or RGB tuple)
             filled: Whether to fill the rectangle
             width: Line width for unfilled rectangles
             layer: Render layer
@@ -475,14 +483,20 @@ class Renderer:
             rect = pygame.Rect(int(screen_pos.x), int(screen_pos.y), 
                               int(size.x), int(size.y))
             
-            if filled:
-                pygame.draw.rect(self.screen, color.to_tuple(), rect)
+            # Handle both Color objects and tuples
+            if hasattr(color, 'to_tuple'):
+                draw_color = color.to_tuple()
             else:
-                pygame.draw.rect(self.screen, color.to_tuple(), rect, width)
+                draw_color = color
+            
+            if filled:
+                pygame.draw.rect(self.screen, draw_color, rect)
+            else:
+                pygame.draw.rect(self.screen, draw_color, rect, width)
         
         self.add_to_render_layer(layer, render)
     
-    def draw_circle(self, center: Vector2, radius: float, color: Color, 
+    def draw_circle(self, center: Vector2, radius: float, color, 
                    filled: bool = True, width: int = 1, layer: str = 'world') -> None:
         """
         Draw a circle.
@@ -490,7 +504,7 @@ class Renderer:
         Args:
             center: Center position in world space
             radius: Radius of the circle
-            color: Color to draw with
+            color: Color to draw with (Color object or RGB tuple)
             filled: Whether to fill the circle
             width: Line width for unfilled circles
             layer: Render layer
@@ -498,16 +512,22 @@ class Renderer:
         def render():
             screen_pos = self.world_to_screen(center)
             
+            # Handle both Color objects and tuples
+            if hasattr(color, 'to_tuple'):
+                draw_color = color.to_tuple()
+            else:
+                draw_color = color
+            
             if filled:
-                pygame.draw.circle(self.screen, color.to_tuple(), 
+                pygame.draw.circle(self.screen, draw_color, 
                                  (int(screen_pos.x), int(screen_pos.y)), int(radius))
             else:
-                pygame.draw.circle(self.screen, color.to_tuple(), 
+                pygame.draw.circle(self.screen, draw_color, 
                                  (int(screen_pos.x), int(screen_pos.y)), int(radius), width)
         
         self.add_to_render_layer(layer, render)
     
-    def draw_line(self, start: Vector2, end: Vector2, color: Color, width: int = 1,
+    def draw_line(self, start: Vector2, end: Vector2, color, width: int = 1,
                   layer: str = 'world') -> None:
         """
         Draw a line.
@@ -515,7 +535,7 @@ class Renderer:
         Args:
             start: Start position in world space
             end: End position in world space
-            color: Color to draw with
+            color: Color to draw with (Color object or RGB tuple)
             width: Line width
             layer: Render layer
         """
@@ -523,13 +543,19 @@ class Renderer:
             screen_start = self.world_to_screen(start)
             screen_end = self.world_to_screen(end)
             
-            pygame.draw.line(self.screen, color.to_tuple(),
+            # Handle both Color objects and tuples
+            if hasattr(color, 'to_tuple'):
+                draw_color = color.to_tuple()
+            else:
+                draw_color = color
+            
+            pygame.draw.line(self.screen, draw_color,
                             (int(screen_start.x), int(screen_start.y)),
                             (int(screen_end.x), int(screen_end.y)), width)
         
         self.add_to_render_layer(layer, render)
     
-    def draw_text(self, text: str, position: Vector2, color: Color, 
+    def draw_text(self, text: str, position: Vector2, color, 
                   font_size: int = 24, font_name: str = None, layer: str = 'ui') -> None:
         """
         Draw text to the screen.
@@ -537,7 +563,7 @@ class Renderer:
         Args:
             text: The text to draw
             position: Position in world space
-            color: Text color
+            color: Text color (Color object or RGB tuple)
             font_size: Font size
             font_name: Font name (None for default)
             layer: Render layer
@@ -545,7 +571,14 @@ class Renderer:
         def render():
             screen_pos = self.world_to_screen(position)
             font = pygame.font.Font(font_name, font_size)
-            text_surface = font.render(text, True, color.to_tuple())
+            
+            # Handle both Color objects and tuples
+            if hasattr(color, 'to_tuple'):
+                draw_color = color.to_tuple()
+            else:
+                draw_color = color
+            
+            text_surface = font.render(text, True, draw_color)
             self.screen.blit(text_surface, (int(screen_pos.x), int(screen_pos.y)))
         
         self.add_to_render_layer(layer, render)

@@ -1,258 +1,232 @@
+
 """
-VoidRay Game Engine - Main Entry Point
-======================================
+VoidRay Game Engine - Physics & Components Demo
+==============================================
 
-This is the main entry point for the VoidRay game engine demonstration.
-It provides a simple menu to run different example games and showcases
-the capabilities of the engine.
+This demonstrates the physics system and component-based architecture
+with collisions, rigidbodies, and proper component usage.
 """
 
-import sys
-import os
-
-# Add the voidray package to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from voidray import Engine, Scene, Vector2, Keys
+import voidray
+from voidray import Scene, GameObject, Sprite, Vector2, Keys, BoxCollider, CircleCollider, Rigidbody
 from voidray.graphics.renderer import Color
-import subprocess
+import random
 
 
-class MenuScene(Scene):
-    """
-    A simple menu scene that allows users to select different example games.
-    """
-    
-    def __init__(self):
-        super().__init__("MainMenu")
-        self.selected_option = 0
-        self.options = [
-            ("Basic Game", "examples/basic_game.py", "Simple movement and collision example"),
-            ("Platformer Demo", "examples/platformer_demo.py", "Physics-based platformer with jumping"),
-            ("Space Shooter", "examples/space_shooter.py", "Advanced shooter with enemies and power-ups"),
-            ("Quit", None, "Exit the VoidRay engine demo")
-        ]
-    
-    def on_enter(self):
-        super().on_enter()
-        print("VoidRay Game Engine Demo")
-        print("========================")
-        print("Use UP/DOWN arrows to navigate, ENTER to select")
-        print()
-        self.display_menu()
-    
-    def display_menu(self):
-        """Display the current menu options in console."""
-        print("\nAvailable Examples:")
-        for i, (name, script, description) in enumerate(self.options):
-            marker = ">" if i == self.selected_option else " "
-            print(f"{marker} {i+1}. {name}")
-            print(f"    {description}")
-        print()
-    
+class Ball(Sprite):
+    """A bouncing ball with physics."""
+
+    def __init__(self, radius=15):
+        super().__init__("Ball")
+        self.create_colored_circle(radius, Color.YELLOW)
+        
+        # Add physics components
+        self.rigidbody = Rigidbody()
+        self.rigidbody.set_mass(1.0)
+        self.rigidbody.set_bounciness(0.8)
+        self.rigidbody.set_drag(0.1)
+        self.add_component(self.rigidbody)
+        
+        # Add collision
+        self.collider = CircleCollider(radius)
+        self.collider.on_collision = self.on_collision_callback
+        self.add_component(self.collider)
+        
+        # Give it some initial velocity
+        initial_velocity = Vector2(
+            random.uniform(-200, 200),
+            random.uniform(-300, -100)
+        )
+        self.rigidbody.set_velocity(initial_velocity)
+
+    def on_collision_callback(self, other, collision_info):
+        """Handle collision with other objects."""
+        # Add some visual feedback or sound here
+        pass
+
     def update(self, delta_time):
         super().update(delta_time)
         
-        input_manager = self.engine.input_manager
+        # Keep ball on screen with bouncing
+        engine = voidray.get_engine()
+        pos = self.transform.position
+        vel = self.rigidbody.velocity
         
-        # Navigate menu
-        if input_manager.is_key_just_pressed(Keys.UP):
-            self.selected_option = (self.selected_option - 1) % len(self.options)
-            self.display_menu()
+        # Bounce off walls
+        if pos.x <= 15 or pos.x >= engine.width - 15:
+            vel.x = -vel.x * 0.8
+            pos.x = max(15, min(engine.width - 15, pos.x))
+            
+        if pos.y <= 15:
+            vel.y = -vel.y * 0.8
+            pos.y = 15
+            
+        if pos.y >= engine.height - 15:
+            vel.y = -vel.y * 0.8
+            pos.y = engine.height - 15
+            
+        self.rigidbody.set_velocity(vel)
+
+
+class Player(Sprite):
+    """A player that can move around and has collision."""
+
+    def __init__(self):
+        super().__init__("Player")
+        self.create_colored_rect(40, 40, Color.BLUE)
+        self.speed = 300
         
-        if input_manager.is_key_just_pressed(Keys.DOWN):
-            self.selected_option = (self.selected_option + 1) % len(self.options)
-            self.display_menu()
+        # Add collision detection
+        self.collider = BoxCollider(40, 40)
+        self.collider.on_collision = self.on_collision_callback
+        self.add_component(self.collider)
+
+    def on_collision_callback(self, other, collision_info):
+        """Handle collision with other objects."""
+        if hasattr(other.game_object, 'name') and 'Ball' in other.game_object.name:
+            # Push the ball away
+            ball_rb = other.game_object.get_component(Rigidbody)
+            if ball_rb:
+                push_force = (other.game_object.transform.position - self.transform.position).normalized() * 500
+                ball_rb.add_impulse(push_force)
+
+    def update(self, delta_time):
+        super().update(delta_time)
+
+        # Get input from the engine
+        input_manager = voidray.get_engine().input_manager
+
+        # Move the player
+        velocity = Vector2.zero()
+        if input_manager.is_key_pressed(Keys.LEFT):
+            velocity.x = -self.speed
+        if input_manager.is_key_pressed(Keys.RIGHT):
+            velocity.x = self.speed
+        if input_manager.is_key_pressed(Keys.UP):
+            velocity.y = -self.speed
+        if input_manager.is_key_pressed(Keys.DOWN):
+            velocity.y = self.speed
+
+        # Apply movement
+        self.transform.position += velocity * delta_time
+
+        # Keep player on screen
+        engine = voidray.get_engine()
+        self.transform.position.x = max(20, min(engine.width - 20, self.transform.position.x))
+        self.transform.position.y = max(20, min(engine.height - 20, self.transform.position.y))
+
+
+class PhysicsScene(Scene):
+    """A scene that demonstrates physics and components."""
+
+    def __init__(self):
+        super().__init__("Physics Demo")
+        self.player = None
+        self.balls = []
+
+    def on_enter(self):
+        super().on_enter()
+
+        # Create player
+        self.player = Player()
+        self.player.transform.position = Vector2(400, 300)
+        self.add_object(self.player)
+
+        # Create some bouncing balls
+        for i in range(5):
+            ball = Ball(random.randint(10, 20))
+            ball.transform.position = Vector2(
+                random.randint(50, 750),
+                random.randint(50, 200)
+            )
+            self.balls.append(ball)
+            self.add_object(ball)
+
+        print("VoidRay Physics & Components Demo")
+        print("Use arrow keys to move the blue square")
+        print("Collide with balls to push them around")
+        print("Press SPACE to add more balls")
+        print("Press ESC to quit")
+
+    def update(self, delta_time):
+        super().update(delta_time)
+
+        # Check for input
+        input_manager = voidray.get_engine().input_manager
         
-        # Select option
-        if input_manager.is_key_just_pressed(Keys.ENTER):
-            self.select_option()
-        
-        # Direct number keys
-        for i in range(len(self.options)):
-            key = getattr(Keys, f'NUM_{i+1}', None)
-            if key and input_manager.is_key_just_pressed(key):
-                self.selected_option = i
-                self.select_option()
-                break
-        
-        # Quick quit
         if input_manager.is_key_just_pressed(Keys.ESCAPE):
-            self.engine.stop()
-    
-    def select_option(self):
-        """Execute the selected menu option."""
-        name, script, description = self.options[self.selected_option]
-        
-        if script is None:  # Quit option
-            print("Thank you for trying VoidRay!")
-            self.engine.stop()
-        else:
-            print(f"\nLaunching {name}...")
-            print(f"Description: {description}")
-            print("Close the game window to return to this menu.\n")
+            voidray.stop()
             
-            try:
-                # Launch the selected example in a new process
-                result = subprocess.run([sys.executable, script], 
-                                      cwd=os.path.dirname(os.path.abspath(__file__)))
-                
-                if result.returncode != 0:
-                    print(f"Example exited with code {result.returncode}")
-                else:
-                    print(f"{name} finished successfully.")
-                
-            except FileNotFoundError:
-                print(f"Error: Could not find {script}")
-                print("Make sure you're running this from the VoidRay root directory.")
-            except Exception as e:
-                print(f"Error launching {name}: {e}")
-            
-            print("\nReturning to menu...")
-            self.display_menu()
-    
+        if input_manager.is_key_just_pressed(Keys.SPACE):
+            # Add a new ball
+            ball = Ball(random.randint(10, 20))
+            ball.transform.position = Vector2(
+                random.randint(50, 750),
+                random.randint(50, 200)
+            )
+            self.balls.append(ball)
+            self.add_object(ball)
+
     def render(self, renderer):
         super().render(renderer)
-        
-        # Draw title
-        title_text = "VoidRay Game Engine"
-        title_size = renderer.get_text_size(title_text, 32)
-        title_pos = Vector2((self.engine.width - title_size[0]) / 2, 50)
-        renderer.draw_text(title_text, title_pos, Color.WHITE, 32)
-        
-        # Draw subtitle
-        subtitle_text = "Select an example to run:"
-        subtitle_size = renderer.get_text_size(subtitle_text, 20)
-        subtitle_pos = Vector2((self.engine.width - subtitle_size[0]) / 2, 100)
-        renderer.draw_text(subtitle_text, subtitle_pos, Color.LIGHT_GRAY, 20)
-        
-        # Draw menu options
-        start_y = 180
-        for i, (name, script, description) in enumerate(self.options):
-            y_pos = start_y + i * 80
-            
-            # Highlight selected option
-            if i == self.selected_option:
-                # Draw selection background
-                renderer.draw_rect(Vector2(50, y_pos - 5), Vector2(self.engine.width - 100, 70), 
-                                 Color.DARK_GRAY, True)
-            
-            # Draw option number and name
-            option_text = f"{i+1}. {name}"
-            renderer.draw_text(option_text, Vector2(70, y_pos), 
-                             Color.CYAN if i == self.selected_option else Color.WHITE, 24)
-            
-            # Draw description
-            renderer.draw_text(description, Vector2(90, y_pos + 30), 
-                             Color.LIGHT_GRAY, 16)
-        
-        # Draw controls
-        controls_y = self.engine.height - 80
-        renderer.draw_text("Controls:", Vector2(20, controls_y), Color.WHITE, 18)
-        renderer.draw_text("UP/DOWN: Navigate  |  ENTER: Select  |  1-4: Direct select  |  ESC: Quit", 
-                          Vector2(20, controls_y + 25), Color.LIGHT_GRAY, 14)
-        
-        # Draw engine info
-        info_text = f"VoidRay v1.0.0 - Built with Python and Pygame"
-        info_size = renderer.get_text_size(info_text, 12)
-        info_pos = Vector2(self.engine.width - info_size[0] - 20, self.engine.height - 30)
-        renderer.draw_text(info_text, info_pos, Color.GRAY, 12)
+
+        # Draw some UI
+        renderer.draw_text("VoidRay Physics & Components Demo", Vector2(10, 10), Color.WHITE, 24)
+        renderer.draw_text("Arrow keys to move, SPACE for more balls, ESC to quit", Vector2(10, 40), Color.LIGHT_GRAY, 16)
+        renderer.draw_text(f"Balls: {len(self.balls)}", Vector2(10, 70), Color.YELLOW, 16)
+
+        # Show FPS
+        fps = voidray.get_engine().get_fps()
+        renderer.draw_text(f"FPS: {fps:.1f}", Vector2(10, voidray.get_engine().height - 30), Color.YELLOW, 16)
 
 
-def print_welcome():
-    """Print welcome message and basic information."""
-    print("=" * 60)
-    print("VoidRay 2D Game Engine - Demo Launcher")
-    print("=" * 60)
-    print()
-    print("Welcome to VoidRay! This demo launcher will help you explore")
-    print("the capabilities of the VoidRay game engine through interactive")
-    print("examples.")
-    print()
-    print("What is VoidRay?")
-    print("- A lightweight 2D game engine built with Python and Pygame")
-    print("- Perfect for learning game development or rapid prototyping")
-    print("- Features physics, audio, input handling, and more")
-    print("- No external editor required - everything is code-driven")
-    print()
-    print("Getting Started:")
-    print("1. Use this demo to explore the example games")
-    print("2. Read the documentation in the documentation/ folder")
-    print("3. Study the example source code in the examples/ folder")
-    print("4. Create your own games using VoidRay!")
-    print()
-    print("System Requirements:")
-    print("- Python 3.8+ with Pygame installed")
-    print("- Any modern computer with basic graphics support")
-    print()
+def init_game():
+    """Initialize the game - called once when engine starts."""
+    print("Initializing VoidRay physics demo...")
+
+    # Enable gravity for a more realistic feel
+    engine = voidray.get_engine()
+    engine.physics_system.set_gravity(500)  # Positive for downward gravity
+
+    # Create and register our scene
+    physics_scene = PhysicsScene()
+    voidray.register_scene("physics", physics_scene)
+    voidray.set_scene("physics")
 
 
-def check_dependencies():
-    """Check if required dependencies are available."""
-    try:
-        import pygame
-        return True
-    except ImportError:
-        print("Error: Pygame is not installed!")
-        print("Please install it with: pip install pygame")
-        return False
+def update_game(delta_time):
+    """Called every frame - for global game logic."""
+    pass  # Scene handles everything in this demo
 
 
-def check_examples():
-    """Check if example files exist."""
-    examples_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples")
-    
-    if not os.path.exists(examples_dir):
-        print("Warning: examples/ directory not found!")
-        return False
-    
-    required_examples = ["basic_game.py", "platformer_demo.py", "space_shooter.py"]
-    missing_examples = []
-    
-    for example in required_examples:
-        example_path = os.path.join(examples_dir, example)
-        if not os.path.exists(example_path):
-            missing_examples.append(example)
-    
-    if missing_examples:
-        print(f"Warning: Missing example files: {', '.join(missing_examples)}")
-        return False
-    
-    return True
+def render_game():
+    """Called every frame for custom rendering."""
+    pass  # Scene handles everything in this demo
 
 
 def main():
-    """Main entry point for the VoidRay demo."""
-    print_welcome()
-    
-    # Check dependencies
-    if not check_dependencies():
-        print("Please install the required dependencies and try again.")
-        sys.exit(1)
-    
-    # Check examples
-    if not check_examples():
-        print("Some example files are missing. The demo may not work correctly.")
-        response = input("Continue anyway? (y/n): ").lower().strip()
-        if response != 'y' and response != 'yes':
-            sys.exit(1)
-    
-    print("Dependencies OK. Starting VoidRay demo launcher...")
-    print()
-    
-    try:
-        # Create and run the demo engine
-        engine = Engine(800, 600, "VoidRay Game Engine - Demo Launcher", 60)
-        menu_scene = MenuScene()
-        engine.set_scene(menu_scene)
-        engine.run()
-        
-    except KeyboardInterrupt:
-        print("\nDemo interrupted by user. Goodbye!")
-    except Exception as e:
-        print(f"Error running demo: {e}")
-        print("Please check your installation and try again.")
-        sys.exit(1)
+    """
+    Main entry point using the physics and component system.
+    """
+    print("=" * 60)
+    print("VoidRay Game Engine - Physics & Components Demo")
+    print("=" * 60)
+
+    # Configure the engine
+    voidray.configure(
+        width=800, 
+        height=600, 
+        title="VoidRay Physics & Components Demo", 
+        fps=60
+    )
+
+    # Register callbacks
+    voidray.on_init(init_game)
+    voidray.on_update(update_game)
+    voidray.on_render(render_game)
+
+    # Start the engine (this will run until the game ends)
+    voidray.start()
 
 
 if __name__ == "__main__":
