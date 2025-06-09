@@ -175,10 +175,12 @@ class VoidRayEngine:
         try:
             from ..rendering.renderer import Advanced2DRenderer
             self.renderer = Advanced2DRenderer(self.screen)
-        except ImportError:
+            print("Advanced 2.5D renderer initialized")
+        except (ImportError, AttributeError) as e:
             # Fallback to basic renderer
             from ..graphics.renderer import Renderer
             self.renderer = Renderer(self.screen)
+            print("Basic renderer initialized")
         self.input_manager = InputManager()
         self.asset_loader = AssetLoader(cache_size=500, enable_streaming=True)
         self.audio_manager = AudioManager(channels=32)
@@ -226,7 +228,16 @@ class VoidRayEngine:
 
         # Call user initialization
         if self.init_callback:
-            self.init_callback()
+            print("Calling user initialization callback...")
+            try:
+                self.init_callback()
+                print("User initialization completed successfully")
+            except Exception as e:
+                print(f"Error in user initialization: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print("No initialization callback registered")
 
     def start(self):
         """
@@ -284,6 +295,12 @@ class VoidRayEngine:
 
                 # Handle input events
                 self._handle_events()
+                
+                # Debug: Check scene status
+                if not self.current_scene:
+                    if frame_count % 60 == 0:  # Print every second
+                        print("Warning: No current scene set")
+                    continue
 
                 try:
                     # Update current scene
@@ -307,9 +324,19 @@ class VoidRayEngine:
                     # Render frame
                     self.renderer.clear()
 
+                    # Always draw a test rectangle to verify rendering works
+                    pygame.draw.rect(self.screen, (255, 0, 0), (50, 50, 100, 100))
+
                     # Render current scene
                     if self.current_scene:
                         self.current_scene.render(self.renderer)
+                        if frame_count % 60 == 0:  # Debug output every second
+                            print(f"Rendering scene with {len(self.current_scene.objects)} objects")
+                    else:
+                        # Draw a debug message if no scene
+                        font = pygame.font.Font(None, 24)
+                        text = font.render("No Scene Loaded", True, (255, 255, 255))
+                        self.screen.blit(text, (10, 10))
 
                     # Call user render callback
                     if self.render_callback:
@@ -332,9 +359,13 @@ class VoidRayEngine:
                     traceback.print_exc()
                     # Continue running instead of crashing
 
+        except KeyboardInterrupt:
+            print("Engine stopped by user")
         except Exception as e:
             engine_logger.error(f"Critical engine error: {e}")
             print(f"Engine crashed with error: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             self._cleanup()
 

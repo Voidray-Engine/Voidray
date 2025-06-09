@@ -67,17 +67,17 @@ def get_engine():
 def on_init(callback):
     """Register initialization callback."""
     if _engine:
-        _engine.on_init = callback
+        _engine.on_init(callback)
 
 def on_update(callback):
     """Register update callback."""
     if _engine:
-        _engine.on_update = callback
+        _engine.on_update(callback)
 
 def on_render(callback):
     """Register render callback."""
     if _engine:
-        _engine.on_render = callback
+        _engine.on_render(callback)
 
 def register_scene(name: str, scene):
     """Register a scene with the engine."""

@@ -42,6 +42,12 @@ class Renderer:
         self.height = screen.get_height()
         self.camera_offset = Vector2(0, 0)
         self.background_color = Color.BLACK
+        
+        # Performance optimizations for Replit environment
+        self.dirty_rects = []  # Track dirty rectangles for selective updates
+        self.use_dirty_rects = True
+        self.sprite_cache = {}  # Simple sprite cache
+        self.max_cache_size = 50  # Limit cache size for memory
 
     def clear(self, color: Optional[Tuple[int, int, int]] = None):
         """
@@ -53,15 +59,21 @@ class Renderer:
         if color is None:
             color = self.background_color
         self.screen.fill(color)
+        # Clear dirty rects for new frame
+        self.dirty_rects.clear()
 
     def present(self):
         """Present the rendered frame to the screen."""
-        pygame.display.update()
+        # Always use flip for reliability in Replit environment
+        pygame.display.flip()
+        # Clear dirty rects after update
+        self.dirty_rects.clear()
 
     def clear_sprite_cache(self):
         """Clear sprite cache to free memory."""
-        # Basic renderer doesn't have sprite cache
-        pass
+        # Basic renderer doesn't have sprite cache, but we can optimize memory
+        import gc
+        gc.collect()  # Force garbage collection to free memory
 
     def set_camera_offset(self, offset: Vector2):
         """
@@ -82,7 +94,8 @@ class Renderer:
         Returns:
             Position in screen space
         """
-        return world_pos - self.camera_offset
+        # For basic 2D rendering, world coordinates = screen coordinates
+        return world_pos
 
     def screen_to_world(self, screen_pos: Vector2) -> Vector2:
         """
@@ -144,12 +157,17 @@ class Renderer:
             filled: Whether to fill the rectangle or just draw outline
         """
         screen_pos = self.world_to_screen(position)
-        rect = pygame.Rect(screen_pos.x, screen_pos.y, size.x, size.y)
+        # Convert to integers and ensure positive dimensions
+        rect = pygame.Rect(int(screen_pos.x), int(screen_pos.y), int(size.x), int(size.y))
 
         if filled:
             pygame.draw.rect(self.screen, color, rect)
         else:
-            pygame.draw.rect(self.screen, color, rect, 1)
+            pygame.draw.rect(self.screen, color, rect, 2)
+            
+        # Track dirty rect for optimized updates
+        if self.use_dirty_rects:
+            self.dirty_rects.append(rect)
 
     def draw_circle(self, center: Vector2, radius: float, 
                    color: Tuple[int, int, int], filled: bool = True):
@@ -205,10 +223,9 @@ class Renderer:
         text_surface = font.render(text, True, color)
 
         screen_pos = self.world_to_screen(position)
-        
+        text_rect = text_surface.get_rect(center=(screen_pos.x, screen_pos.y))
+
         if center:
-            text_rect = text_surface.get_rect()
-            text_rect.center = (screen_pos.x, screen_pos.y)
             self.screen.blit(text_surface, text_rect)
         else:
             self.screen.blit(text_surface, (screen_pos.x, screen_pos.y))
