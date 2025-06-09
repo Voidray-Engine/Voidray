@@ -3,7 +3,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![License](https://img.shields.io/badge/license-GPL--3.0-red)
-![Version](https://img.shields.io/badge/version-2.5--stable-green)
+![Version](https://img.shields.io/badge/version-2.5.4--stable-green)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
 A **powerful**, **feature-rich** 2D/2.5D game engine built with Python and Pygame. Perfect for indie developers, game studios, and anyone wanting to create professional-quality games with ease!
