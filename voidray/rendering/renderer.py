@@ -104,6 +104,10 @@ class Advanced2DRenderer:
         self.enable_shadows = True
 
         print("Advanced 2.5D renderer initialized")
+        
+        # Disable debug rendering by default
+        self.debug_mode = False
+        self.show_debug_cubes = False
 
     def clear(self, color: Optional[Tuple[int, int, int]] = None):
         """Clear the screen and buffers."""
@@ -547,6 +551,22 @@ class Advanced2DRenderer:
 
         screen_pos = self.world_to_screen(position)
         self.screen.blit(text_surface, (screen_pos.x, screen_pos.y))
+
+    def get_text_size(self, text: str, font_size: int = 24, 
+                     font_name: Optional[str] = None) -> Tuple[int, int]:
+        """
+        Get the size of rendered text.
+
+        Args:
+            text: Text string to measure
+            font_size: Font size in pixels
+            font_name: Font name (None for default)
+
+        Returns:
+            (width, height) tuple
+        """
+        font = pygame.font.Font(font_name, font_size)
+        return font.size(text)
 
     def get_memory_usage(self) -> Dict[str, int]:
         """Get renderer memory usage statistics."""

@@ -26,6 +26,7 @@ class DebugOverlay:
         self.font = None
         self.line_height = 20
         self.margin = 10
+        self.debug_render_enabled = False
         
     def toggle(self):
         """Toggle debug overlay visibility."""
@@ -38,7 +39,7 @@ class DebugOverlay:
         Args:
             renderer: The renderer to draw with
         """
-        if not self.visible:
+        if not self.visible or not self.debug_render_enabled:
             return
             
         # Initialize font if needed

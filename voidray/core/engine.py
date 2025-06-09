@@ -16,6 +16,7 @@ from .resource_manager import ResourceManager
 from .engine_state import EngineStateManager, EngineState
 from .config import EngineConfig
 from .logger import engine_logger
+from .error_dialog import show_fatal_error
 from pygame import Vector2
 
 
@@ -57,10 +58,20 @@ class VoidRayEngine:
         self.state_manager = EngineStateManager()  # Initialize immediately
         self.config = None
 
-        # Scene management
+        # Enhanced scene management
+        from .scene_manager import SceneManager
+        self.scene_manager = SceneManager()
         self.current_scene: Optional[Scene] = None
         self.scenes: Dict[str, Scene] = {}
         self.delta_time = 0.0
+        
+        # World management for large-scale games
+        from .world_manager import WorldManager
+        self.world_manager = WorldManager()
+        
+        # Performance profiling
+        from .profiler import PerformanceProfiler
+        self.profiler = PerformanceProfiler()
 
         # User callbacks
         self.init_callback: Optional[Callable] = None
@@ -214,8 +225,12 @@ class VoidRayEngine:
         self.vsync_enabled = True
         self.multithreading_enabled = True
 
-        self.resource_manager = ResourceManager()
+        # Enhanced resource management with streaming
+        self.resource_manager = ResourceManager(max_memory_mb=1024, enable_streaming=True)
         self.config = EngineConfig()
+        
+        # Initialize profiler callback
+        self.profiler.add_report_callback(self._handle_performance_report)
 
         # Try to load config file
         self.config.load_from_file("config/engine.json")
@@ -236,6 +251,20 @@ class VoidRayEngine:
                 print(f"Error in user initialization: {e}")
                 import traceback
                 traceback.print_exc()
+                
+                # Show error dialog for initialization errors
+                try:
+                    show_fatal_error(
+                        "Game Initialization Error",
+                        f"Failed to initialize the game.\n\nError: {str(e)}",
+                        e
+                    )
+                except Exception as dialog_error:
+                    print(f"Error dialog failed: {dialog_error}")
+                
+                # Stop the engine
+                self.stop()
+                return
         else:
             print("No initialization callback registered")
 
@@ -272,6 +301,10 @@ class VoidRayEngine:
 
         try:
             while self.running:
+                # Start frame profiling
+                self.profiler.start_frame()
+                profile_id = self.profiler.start_profile("main_loop")
+                
                 # Calculate delta time
                 dt = self.clock.tick(self.target_fps)
                 self.delta_time = dt / 1000.0  # Convert to seconds
@@ -304,17 +337,29 @@ class VoidRayEngine:
 
                 try:
                     # Update current scene
+                    update_profile = self.profiler.start_profile("scene_update")
                     if self.current_scene:
                         self.current_scene.update(self.delta_time)
+                    self.profiler.end_profile(update_profile)
 
                     # Call user update callback
                     if self.update_callback:
+                        callback_profile = self.profiler.start_profile("user_update")
                         self.update_callback(self.delta_time)
+                        self.profiler.end_profile(callback_profile)
 
                     # Update physics with optimization
+                    physics_profile = self.profiler.start_profile("physics_update")
                     self.physics_engine.update(self.delta_time)
                     if hasattr(self, 'physics_system'):
                         self.physics_system.update(self.delta_time)
+                    self.profiler.end_profile(physics_profile)
+                    
+                    # Update world manager
+                    world_profile = self.profiler.start_profile("world_update")
+                    # Update player position for streaming (would get from player object)
+                    # self.world_manager.update_player_position(player_position)
+                    self.profiler.end_profile(world_profile)
 
                 except Exception as e:
                     engine_logger.error(f"Update error: {e}")
@@ -322,12 +367,11 @@ class VoidRayEngine:
 
                 try:
                     # Render frame
+                    render_profile = self.profiler.start_profile("render_frame")
                     self.renderer.clear()
 
-                    # Always draw a test rectangle to verify rendering works
-                    pygame.draw.rect(self.screen, (255, 0, 0), (50, 50, 100, 100))
-
                     # Render current scene
+                    scene_render_profile = self.profiler.start_profile("scene_render")
                     if self.current_scene:
                         self.current_scene.render(self.renderer)
                         if frame_count % 60 == 0:  # Debug output every second
@@ -337,27 +381,53 @@ class VoidRayEngine:
                         font = pygame.font.Font(None, 24)
                         text = font.render("No Scene Loaded", True, (255, 255, 255))
                         self.screen.blit(text, (10, 10))
+                    self.profiler.end_profile(scene_render_profile)
 
                     # Call user render callback
                     if self.render_callback:
+                        callback_render_profile = self.profiler.start_profile("user_render")
                         self.render_callback()
+                        self.profiler.end_profile(callback_render_profile)
 
-                    # Render debug overlay if available
-                    if hasattr(self, 'debug_overlay'):
-                        self.debug_overlay.render(self.renderer)
+                    # Debug overlay completely disabled
+                    # if hasattr(self, 'debug_overlay') and self.debug_overlay.visible:
+                    #     debug_profile = self.profiler.start_profile("debug_overlay")
+                    #     self.debug_overlay.render(self.renderer)
+                    #     self.profiler.end_profile(debug_profile)
 
                     # Ensure the display is updated
+                    present_profile = self.profiler.start_profile("present")
                     self.renderer.present()
+                    self.profiler.end_profile(present_profile)
+                    
+                    self.profiler.end_profile(render_profile)
                     
                     # Force pygame event processing to keep window responsive
                     pygame.event.pump()
+                    
+                    # End frame profiling
+                    self.profiler.end_profile(profile_id)
+                    self.profiler.end_frame()
 
                 except Exception as e:
                     engine_logger.error(f"Render error: {e}")
                     print(f"Render error details: {e}")
                     import traceback
                     traceback.print_exc()
-                    # Continue running instead of crashing
+                    
+                    # For critical render errors, show dialog and stop
+                    if "get_text_size" in str(e) or "AttributeError" in str(type(e).__name__):
+                        try:
+                            show_fatal_error(
+                                "Rendering System Error",
+                                f"A critical rendering error has occurred.\n\nError: {str(e)}",
+                                e
+                            )
+                        except Exception as dialog_error:
+                            print(f"Error dialog failed: {dialog_error}")
+                        self.stop()
+                        break
+                    # Continue running for non-critical errors
 
         except KeyboardInterrupt:
             print("Engine stopped by user")
@@ -366,6 +436,16 @@ class VoidRayEngine:
             print(f"Engine crashed with error: {e}")
             import traceback
             traceback.print_exc()
+            
+            # Show error dialog
+            try:
+                show_fatal_error(
+                    "VoidRay Engine Fatal Error",
+                    f"The game engine has encountered a critical error and must close.\n\nError: {str(e)}",
+                    e
+                )
+            except Exception as dialog_error:
+                print(f"Error dialog failed: {dialog_error}")
         finally:
             self._cleanup()
 
@@ -402,9 +482,45 @@ class VoidRayEngine:
         if self.current_scene:
             self.current_scene.on_exit()
 
+        # Generate final performance report
+        if hasattr(self, 'profiler'):
+            self.profiler.save_report("logs/final_performance_report.json")
+            
+        # Clean up enhanced systems
+        if hasattr(self, 'world_manager'):
+            self.world_manager.unload_level()
+            
+        if hasattr(self, 'resource_manager'):
+            self.resource_manager.cleanup()
+
         self.audio_manager.cleanup()
         pygame.quit()
         sys.exit()
+    
+    def _handle_performance_report(self, report: Dict[str, Any]):
+        """Handle performance reports for optimization."""
+        # Auto-optimize based on performance
+        frame_stats = report.get('frame_stats', {})
+        avg_fps = frame_stats.get('avg_fps', 60)
+        
+        if avg_fps < self.target_fps * 0.8:  # If FPS drops below 80% of target
+            print(f"Performance degradation detected (FPS: {avg_fps:.1f})")
+            self._auto_optimize()
+    
+    def _auto_optimize(self):
+        """Automatically optimize performance when needed."""
+        # Reduce render distance
+        if hasattr(self, 'renderer') and hasattr(self.renderer, 'render_distance'):
+            self.renderer.render_distance *= 0.9
+        
+        # Free memory
+        if hasattr(self, 'resource_manager'):
+            self.resource_manager._free_memory()
+        
+        # Optimize physics
+        self.physics_engine.optimize_performance()
+        
+        print("Auto-optimization applied")
 
     def get_fps(self) -> float:
         """Get the current frames per second."""

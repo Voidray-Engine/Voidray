@@ -1,4 +1,3 @@
-
 """
 VoidRay Game Engine
 
@@ -41,12 +40,17 @@ from .utils.time import Time
 # Global engine instance
 _engine = None
 
-def configure(width: int = 800, height: int = 600, title: str = "VoidRay Game", fps: int = 60):
+
+def configure(width: int = 800,
+              height: int = 600,
+              title: str = "VoidRay Game",
+              fps: int = 60):
     """Configure the game engine with basic settings."""
     global _engine
     _engine = VoidRayEngine()
     _engine.configure(width, height, title, fps)
     return _engine
+
 
 def start():
     """Start the game engine."""
@@ -55,39 +59,47 @@ def start():
     else:
         print("Error: Engine not configured. Call voidray.configure() first.")
 
+
 def stop():
     """Stop the game engine."""
     if _engine:
         _engine.stop()
 
+
 def get_engine():
     """Get the current engine instance."""
     return _engine
+
 
 def on_init(callback):
     """Register initialization callback."""
     if _engine:
         _engine.on_init(callback)
 
+
 def on_update(callback):
     """Register update callback."""
     if _engine:
         _engine.on_update(callback)
+
 
 def on_render(callback):
     """Register render callback."""
     if _engine:
         _engine.on_render(callback)
 
+
 def register_scene(name: str, scene):
     """Register a scene with the engine."""
     if _engine:
         _engine.register_scene(name, scene)
 
+
 def set_scene(name_or_scene):
     """Set the active scene."""
     if _engine:
         _engine.set_scene(name_or_scene)
+
 
 def get_scene():
     """Get the current active scene."""
@@ -95,36 +107,60 @@ def get_scene():
         return _engine.scene_manager.get_current_scene()
     return None
 
+
 # Version info
-__version__ = "2.5.0"
-__author__ = "VoidRay Development Team"
+__version__ = "2.5.4"
+__author__ = "VoidRay Team"
 
 # Main exports
 __all__ = [
     # Core
-    'Engine', 'VoidRayEngine', 'Scene', 'GameObject', 'Component',
-    
+    'Engine',
+    'VoidRayEngine',
+    'Scene',
+    'GameObject',
+    'Component',
+
     # Graphics
-    'Sprite', 'Camera', 'Color',
-    
+    'Sprite',
+    'Camera',
+    'Color',
+
     # Math
-    'Vector2', 'Transform',
-    
+    'Vector2',
+    'Transform',
+
     # Input
-    'InputManager', 'Keys',
-    
+    'InputManager',
+    'Keys',
+
     # Physics
-    'PhysicsEngine', 'PhysicsSystem', 'Collider', 'RectCollider', 
-    'CircleCollider', 'BoxCollider', 'Rigidbody',
-    
+    'PhysicsEngine',
+    'PhysicsSystem',
+    'Collider',
+    'RectCollider',
+    'CircleCollider',
+    'BoxCollider',
+    'Rigidbody',
+
     # Audio
     'AudioManager',
-    
+
     # Utilities
-    'UtilColor', 'Time',
-    
+    'UtilColor',
+    'Time',
+
     # Engine functions
-    'configure', 'start', 'stop', 'get_engine',
-    'on_init', 'on_update', 'on_render',
-    'register_scene', 'set_scene', 'get_scene'
+    'configure',
+    'start',
+    'stop',
+    'get_engine',
+    'on_init',
+    'on_update',
+    'on_render',
+    'register_scene',
+    'set_scene',
+    'get_scene'
 ]
+# Error handling
+from .core.error_dialog import show_fatal_error
