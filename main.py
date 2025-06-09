@@ -9,7 +9,7 @@ with collisions, rigidbodies, and proper component usage.
 
 import voidray
 from voidray import Scene, GameObject, Sprite, Vector2, Keys, BoxCollider, CircleCollider, Rigidbody
-from voidray.graphics.renderer import Color
+from voidray.utils.color import Color
 import random
 
 
@@ -18,7 +18,7 @@ class Ball(Sprite):
 
     def __init__(self, radius=15):
         super().__init__("Ball")
-        self.create_colored_circle(radius, Color.YELLOW)
+        self.create_colored_circle(radius, (255, 255, 0))  # Yellow
         
         # Add physics components
         self.rigidbody = Rigidbody()
@@ -73,7 +73,7 @@ class Player(Sprite):
 
     def __init__(self):
         super().__init__("Player")
-        self.create_colored_rect(40, 40, Color.BLUE)
+        self.create_colored_rect(40, 40, (0, 0, 255))  # Blue
         self.speed = 300
         
         # Add collision detection
@@ -171,13 +171,13 @@ class PhysicsScene(Scene):
         super().render(renderer)
 
         # Draw some UI
-        renderer.draw_text("VoidRay Physics & Components Demo", Vector2(10, 10), Color.WHITE, 24)
-        renderer.draw_text("Arrow keys to move, SPACE for more balls, ESC to quit", Vector2(10, 40), Color.LIGHT_GRAY, 16)
-        renderer.draw_text(f"Balls: {len(self.balls)}", Vector2(10, 70), Color.YELLOW, 16)
+        renderer.draw_text("VoidRay Physics & Components Demo", Vector2(10, 10), (255, 255, 255), 24)  # White
+        renderer.draw_text("Arrow keys to move, SPACE for more balls, ESC to quit", Vector2(10, 40), (192, 192, 192), 16)  # Light Gray
+        renderer.draw_text(f"Balls: {len(self.balls)}", Vector2(10, 70), (255, 255, 0), 16)  # Yellow
 
         # Show FPS
         fps = voidray.get_engine().get_fps()
-        renderer.draw_text(f"FPS: {fps:.1f}", Vector2(10, voidray.get_engine().height - 30), Color.YELLOW, 16)
+        renderer.draw_text(f"FPS: {fps:.1f}", Vector2(10, voidray.get_engine().height - 30), (255, 255, 0), 16)  # Yellow
 
 
 def init_game():

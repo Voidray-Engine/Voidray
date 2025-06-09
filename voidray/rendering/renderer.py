@@ -598,3 +598,109 @@ class Renderer:
     def set_fog_distance(self, distance: float) -> None:
         """Set the fog distance for 2.5D rendering."""
         self.fog_distance = distance
+"""
+VoidRay Renderer
+Advanced 2D/2.5D rendering system.
+"""
+
+import pygame
+from typing import Optional, Tuple, Dict, Any
+from ..math.vector2 import Vector2
+from ..utils.color import Color
+
+
+class Renderer:
+    """
+    Advanced renderer supporting 2D and 2.5D graphics.
+    """
+    
+    def __init__(self, screen: pygame.Surface):
+        self.screen = screen
+        self.rendering_mode = "2D"
+        self.render_distance = 1000
+        self.sprite_cache = {}
+        self.font_cache = {}
+        
+        # Initialize default font
+        pygame.font.init()
+        self.default_font = pygame.font.Font(None, 24)
+        
+    def clear(self, color: Tuple[int, int, int] = (0, 0, 0)):
+        """Clear the screen with the specified color."""
+        self.screen.fill(color)
+    
+    def present(self):
+        """Present the rendered frame to the screen."""
+        pygame.display.flip()
+    
+    def draw_rect(self, position: Vector2, size: Vector2, color: Tuple[int, int, int], 
+                  filled: bool = True, width: int = 1, layer: str = 'default'):
+        """Draw a rectangle."""
+        rect = pygame.Rect(position.x, position.y, size.x, size.y)
+        if filled:
+            pygame.draw.rect(self.screen, color, rect)
+        else:
+            pygame.draw.rect(self.screen, color, rect, width)
+    
+    def draw_circle(self, position: Vector2, radius: float, color: Tuple[int, int, int], 
+                   filled: bool = True, width: int = 1, layer: str = 'default'):
+        """Draw a circle."""
+        if filled:
+            pygame.draw.circle(self.screen, color, (int(position.x), int(position.y)), int(radius))
+        else:
+            pygame.draw.circle(self.screen, color, (int(position.x), int(position.y)), int(radius), width)
+    
+    def draw_line(self, start: Vector2, end: Vector2, color: Tuple[int, int, int], 
+                  width: int = 1, layer: str = 'default'):
+        """Draw a line."""
+        pygame.draw.line(self.screen, color, (int(start.x), int(start.y)), (int(end.x), int(end.y)), width)
+    
+    def draw_text(self, text: str, position: Vector2, color: Tuple[int, int, int], 
+                  size: int = 24, font_name: Optional[str] = None, layer: str = 'default'):
+        """Draw text."""
+        font_key = (font_name, size)
+        if font_key not in self.font_cache:
+            if font_name:
+                try:
+                    self.font_cache[font_key] = pygame.font.Font(font_name, size)
+                except:
+                    self.font_cache[font_key] = pygame.font.Font(None, size)
+            else:
+                self.font_cache[font_key] = pygame.font.Font(None, size)
+        
+        font = self.font_cache[font_key]
+        text_surface = font.render(text, True, color)
+        self.screen.blit(text_surface, (int(position.x), int(position.y)))
+    
+    def draw_sprite(self, sprite_surface: pygame.Surface, position: Vector2, 
+                   rotation: float = 0, scale: Vector2 = None, layer: str = 'default'):
+        """Draw a sprite with transformations."""
+        if scale and (scale.x != 1.0 or scale.y != 1.0):
+            width = int(sprite_surface.get_width() * scale.x)
+            height = int(sprite_surface.get_height() * scale.y)
+            sprite_surface = pygame.transform.scale(sprite_surface, (width, height))
+        
+        if rotation != 0:
+            sprite_surface = pygame.transform.rotate(sprite_surface, rotation)
+        
+        # Center the sprite at the position
+        rect = sprite_surface.get_rect()
+        rect.center = (int(position.x), int(position.y))
+        self.screen.blit(sprite_surface, rect)
+    
+    def set_rendering_mode(self, mode: str):
+        """Set the rendering mode (2D or 2.5D)."""
+        if mode in ["2D", "2.5D"]:
+            self.rendering_mode = mode
+    
+    def set_render_distance(self, distance: float):
+        """Set the render distance for 2.5D mode."""
+        self.render_distance = distance
+    
+    def clear_sprite_cache(self):
+        """Clear the sprite cache to free memory."""
+        self.sprite_cache.clear()
+    
+    def get_screen_size(self) -> Vector2:
+        """Get the screen dimensions."""
+        return Vector2(self.screen.get_width(), self.screen.get_height())

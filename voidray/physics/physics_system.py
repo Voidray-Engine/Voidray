@@ -206,3 +206,154 @@ class PhysicsSystem:
         impulse = normal * impulse_scalar
         rigidbody_a.velocity += impulse / rigidbody_a.mass
         rigidbody_b.velocity -= impulse / rigidbody_b.mass
+"""
+VoidRay Physics System
+High-level physics system that manages rigidbodies and constraints.
+"""
+
+from typing import List, Set
+from ..math.vector2 import Vector2
+from .rigidbody import Rigidbody
+from .physics_engine import PhysicsEngine
+
+
+class PhysicsSystem:
+    """
+    High-level physics system that manages rigidbodies and physics simulation.
+    """
+    
+    def __init__(self):
+        self.rigidbodies: List[Rigidbody] = []
+        self.gravity = Vector2(0, 0)
+        self.physics_engine = PhysicsEngine()
+        self.sleeping_bodies: Set[Rigidbody] = set()
+        self.time_accumulator = 0.0
+        self.fixed_timestep = 1.0 / 60.0  # 60 FPS physics
+    
+    def set_gravity(self, gravity: float):
+        """
+        Set gravity strength.
+        
+        Args:
+            gravity: Gravity strength (positive for downward)
+        """
+        self.gravity = Vector2(0, gravity)
+        self.physics_engine.set_gravity(gravity)
+    
+    def add_rigidbody(self, rigidbody: Rigidbody):
+        """
+        Add a rigidbody to the physics simulation.
+        
+        Args:
+            rigidbody: The rigidbody to add
+        """
+        if rigidbody not in self.rigidbodies:
+            self.rigidbodies.append(rigidbody)
+    
+    def remove_rigidbody(self, rigidbody: Rigidbody):
+        """
+        Remove a rigidbody from the physics simulation.
+        
+        Args:
+            rigidbody: The rigidbody to remove
+        """
+        if rigidbody in self.rigidbodies:
+            self.rigidbodies.remove(rigidbody)
+        if rigidbody in self.sleeping_bodies:
+            self.sleeping_bodies.remove(rigidbody)
+    
+    def update(self, delta_time: float):
+        """
+        Update the physics simulation.
+        
+        Args:
+            delta_time: Time elapsed since last frame
+        """
+        # Accumulate time for fixed timestep
+        self.time_accumulator += delta_time
+        
+        # Process fixed timestep updates
+        while self.time_accumulator >= self.fixed_timestep:
+            self._fixed_update(self.fixed_timestep)
+            self.time_accumulator -= self.fixed_timestep
+        
+        # Update physics engine
+        self.physics_engine.update(delta_time)
+    
+    def _fixed_update(self, fixed_delta: float):
+        """
+        Fixed timestep physics update.
+        
+        Args:
+            fixed_delta: Fixed timestep duration
+        """
+        # Update active rigidbodies
+        active_bodies = [rb for rb in self.rigidbodies if rb not in self.sleeping_bodies]
+        
+        for rigidbody in active_bodies:
+            if rigidbody.game_object and rigidbody.game_object.active:
+                # Apply gravity
+                if not rigidbody.is_kinematic and self.gravity.magnitude() > 0:
+                    rigidbody.add_force(self.gravity * rigidbody.mass)
+                
+                # Update rigidbody
+                rigidbody.update(fixed_delta)
+                
+                # Check if body should sleep
+                if rigidbody.velocity.magnitude() < 0.1 and rigidbody.angular_velocity < 0.1:
+                    rigidbody.sleep_timer += fixed_delta
+                    if rigidbody.sleep_timer > 1.0:  # Sleep after 1 second of low movement
+                        self.sleeping_bodies.add(rigidbody)
+                else:
+                    rigidbody.sleep_timer = 0.0
+    
+    def wake_rigidbody(self, rigidbody: Rigidbody):
+        """
+        Wake up a sleeping rigidbody.
+        
+        Args:
+            rigidbody: The rigidbody to wake
+        """
+        if rigidbody in self.sleeping_bodies:
+            self.sleeping_bodies.remove(rigidbody)
+            rigidbody.sleep_timer = 0.0
+    
+    def get_rigidbodies_in_area(self, center: Vector2, radius: float) -> List[Rigidbody]:
+        """
+        Get all rigidbodies within a circular area.
+        
+        Args:
+            center: Center of the area
+            radius: Radius of the area
+            
+        Returns:
+            List of rigidbodies in the area
+        """
+        result = []
+        for rigidbody in self.rigidbodies:
+            if rigidbody.game_object and rigidbody.game_object.active:
+                distance = (rigidbody.game_object.transform.position - center).magnitude()
+                if distance <= radius:
+                    result.append(rigidbody)
+        return result
+    
+    def apply_explosion(self, center: Vector2, force: float, radius: float):
+        """
+        Apply explosion force to all rigidbodies in range.
+        
+        Args:
+            center: Explosion center
+            force: Explosion force
+            radius: Explosion radius
+        """
+        for rigidbody in self.get_rigidbodies_in_area(center, radius):
+            if not rigidbody.is_kinematic:
+                direction = rigidbody.game_object.transform.position - center
+                distance = direction.magnitude()
+                
+                if distance > 0:
+                    # Falloff with distance
+                    falloff = max(0, 1.0 - distance / radius)
+                    explosion_force = direction.normalized() * force * falloff
+                    rigidbody.add_impulse(explosion_force)
+                    self.wake_rigidbody(rigidbody)

@@ -312,3 +312,49 @@ Color.CYAN = Color(0, 255, 255)
 Color.MAGENTA = Color(255, 0, 255)
 Color.GRAY = Color(128, 128, 128)
 Color.TRANSPARENT = Color(0, 0, 0, 0)
+"""
+VoidRay Color Utilities
+Color constants and utilities for the engine.
+"""
+
+
+class Color:
+    """Color constants and utilities."""
+    
+    # Basic colors
+    WHITE = (255, 255, 255)
+    BLACK = (0, 0, 0)
+    RED = (255, 0, 0)
+    GREEN = (0, 255, 0)
+    BLUE = (0, 0, 255)
+    YELLOW = (255, 255, 0)
+    CYAN = (0, 255, 255)
+    MAGENTA = (255, 0, 255)
+    
+    # Gray shades
+    LIGHT_GRAY = (192, 192, 192)
+    GRAY = (128, 128, 128)
+    DARK_GRAY = (64, 64, 64)
+    
+    # Extended colors
+    ORANGE = (255, 165, 0)
+    PURPLE = (128, 0, 128)
+    BROWN = (165, 42, 42)
+    PINK = (255, 192, 203)
+    
+    @staticmethod
+    def rgba(r: int, g: int, b: int, a: int = 255) -> tuple:
+        """Create RGBA color tuple."""
+        return (r, g, b, a)
+    
+    @staticmethod
+    def from_hex(hex_color: str) -> tuple:
+        """Convert hex color string to RGB tuple."""
+        hex_color = hex_color.lstrip('#')
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    
+    @staticmethod
+    def lerp(color1: tuple, color2: tuple, t: float) -> tuple:
+        """Linear interpolation between two colors."""
+        t = max(0.0, min(1.0, t))
+        return tuple(int(c1 + (c2 - c1) * t) for c1, c2 in zip(color1, color2))

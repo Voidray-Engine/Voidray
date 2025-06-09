@@ -20,6 +20,37 @@ class PhysicsEngine:
         self.gravity = Vector2(0, 0)  # No gravity by default - can be enabled per game
         self.colliders: List[Collider] = []
         self.collision_callbacks: List[Callable[[Collider, Collider], None]] = []
+        self.spatial_grid_size = 200.0
+        self.max_velocity = 2000.0
+        self.time_scale = 1.0
+    
+    def set_gravity(self, gravity: float):
+        """
+        Set gravity strength (positive for downward).
+        
+        Args:
+            gravity: Gravity strength in pixels per second squared
+        """
+        self.gravity = Vector2(0, gravity)
+        print(f"Physics gravity set to {gravity}")
+    
+    def set_time_scale(self, scale: float):
+        """
+        Set physics time scale for slow motion or speed up effects.
+        
+        Args:
+            scale: Time scale multiplier (1.0 = normal, 0.5 = half speed, 2.0 = double speed)
+        """
+        self.time_scale = max(0.0, scale)
+    
+    def set_max_velocity(self, max_vel: float):
+        """
+        Set maximum velocity to prevent objects from moving too fast.
+        
+        Args:
+            max_vel: Maximum velocity in pixels per second
+        """
+        self.max_velocity = max_vel
         
     def add_collider(self, collider: Collider):
         """
@@ -78,15 +109,17 @@ class PhysicsEngine:
             collider: The collider to update
             delta_time: Time elapsed since last frame
         """
-        # Skip physics updates - objects control their own movement
-        # Only apply physics for special cases where explicitly requested
-        if False:
-            # Apply gravity only if enabled
-            if self.gravity.magnitude() > 0:
-                collider.velocity += self.gravity * delta_time
+        # Apply physics if object has a rigidbody component
+        if collider.game_object:
+            rigidbody = collider.game_object.get_component(type(None).__class__)
             
-            # Apply velocity to position
-            if collider.game_object:
+            # Check if this is a rigidbody by looking for velocity attribute
+            if hasattr(collider, 'velocity'):
+                # Apply gravity only if enabled
+                if self.gravity.magnitude() > 0:
+                    collider.velocity += self.gravity * delta_time
+                
+                # Apply velocity to position
                 current_pos = collider.game_object.transform.position
                 new_pos = current_pos + collider.velocity * delta_time
                 collider.game_object.transform.position = new_pos

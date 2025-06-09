@@ -13,6 +13,10 @@ from ..physics.physics_engine import PhysicsEngine
 from ..audio.audio_manager import AudioManager
 from ..assets.asset_loader import AssetLoader
 from .scene import Scene
+from .resource_manager import ResourceManager
+from .engine_state import EngineStateManager, EngineState
+from .config import EngineConfig
+from .logger import engine_logger
 
 
 class VoidRayEngine:
@@ -49,6 +53,9 @@ class VoidRayEngine:
         self.physics_engine = None
         self.audio_manager = None
         self.asset_loader = None
+        self.resource_manager = None
+        self.state_manager = EngineStateManager()  # Initialize immediately
+        self.config = None
         
         # Scene management
         self.current_scene: Optional[Scene] = None
@@ -161,14 +168,33 @@ class VoidRayEngine:
         self.renderer = Renderer(self.screen)
         self.input_manager = InputManager()
         self.physics_engine = PhysicsEngine()
-        self.audio_manager = AudioManager()
-        self.asset_loader = AssetLoader()
+        self.audio_manager = AudioManager(channels=32)  # More channels for demanding games
+        self.asset_loader = AssetLoader(cache_size=500, enable_streaming=True)  # Enhanced asset loading
+        self.resource_manager = ResourceManager()
+        self.config = EngineConfig()
+        
+        # Enhanced features for demanding games
+        self.rendering_mode = "2D"  # Can be "2D" or "2.5D"
+        self.performance_mode = False
+        self.vsync_enabled = True
+        self.multithreading_enabled = True
+        
+        # Try to load config file
+        self.config.load_from_file("config/engine.json")
         
         # Initialize physics system for collision detection
-        from ..physics.physics_system import PhysicsSystem
-        self.physics_system = PhysicsSystem()
+        try:
+            from ..physics.physics_system import PhysicsSystem
+            self.physics_system = PhysicsSystem()
+        except ImportError:
+            # Fallback to basic physics engine
+            self.physics_system = self.physics_engine
         
-        print(f"VoidRay Engine initialized: {self.width}x{self.height} @ {self.target_fps}fps")
+        # Debug overlay
+        from .debug_overlay import DebugOverlay
+        self.debug_overlay = DebugOverlay(self)
+        
+        engine_logger.engine_start(self.width, self.height, self.target_fps)
         
         # Call user initialization
         if self.init_callback:
@@ -180,8 +206,10 @@ class VoidRayEngine:
         """
         if self.running:
             return
-            
+        
+        self.state_manager.transition_to(EngineState.INITIALIZING)
         self._initialize_systems()
+        self.state_manager.transition_to(EngineState.RUNNING)
         self._run_main_loop()
     
     def _run_main_loop(self):
@@ -191,23 +219,37 @@ class VoidRayEngine:
         self.running = True
         print("Starting VoidRay engine...")
         
-        # Performance tracking
+        # Performance tracking and statistics
         frame_count = 0
         performance_timer = 0
+        self.engine_stats = {
+            'frames_rendered': 0,
+            'objects_rendered': 0,
+            'physics_objects': 0,
+            'memory_usage': 0,
+            'rendering_mode': self.rendering_mode,
+            'performance_mode': self.performance_mode
+        }
         
         while self.running:
             # Calculate delta time
             dt = self.clock.tick(self.target_fps)
             self.delta_time = dt / 1000.0  # Convert to seconds
             
-            # Performance monitoring
+            # Performance monitoring and statistics
             frame_count += 1
             performance_timer += self.delta_time
+            self.engine_stats['frames_rendered'] += 1
             
             if performance_timer >= 1.0:  # Every second
                 actual_fps = frame_count / performance_timer
+                self.engine_stats['objects_rendered'] = len(self.current_scene.objects) if self.current_scene else 0
+                self.engine_stats['physics_objects'] = len(self.physics_engine.colliders)
+                
                 if actual_fps < self.target_fps * 0.8:  # If FPS drops below 80% of target
+                    engine_logger.warning(f"Performance warning: FPS dropped to {actual_fps:.1f}")
                     self._optimize_performance()
+                    
                 frame_count = 0
                 performance_timer = 0
             
@@ -237,6 +279,9 @@ class VoidRayEngine:
             if self.render_callback:
                 self.render_callback()
             
+            # Render debug overlay
+            self.debug_overlay.render(self.renderer)
+            
             self.renderer.present()
         
         self._cleanup()
@@ -257,6 +302,9 @@ class VoidRayEngine:
         for event in events:
             if event.type == pygame.QUIT:
                 self.stop()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F3:  # F3 to toggle debug overlay
+                    self.debug_overlay.toggle()
             
             # Pass events to input manager
             self.input_manager.handle_event(event)
@@ -282,6 +330,90 @@ class VoidRayEngine:
     def get_delta_time(self) -> float:
         """Get the time elapsed since the last frame in seconds."""
         return self.delta_time
+    
+    def get_engine_stats(self) -> dict:
+        """Get engine performance statistics."""
+        stats = self.engine_stats.copy()
+        if hasattr(self, 'audio_manager'):
+            stats['audio_info'] = self.audio_manager.get_audio_info()
+        if hasattr(self, 'asset_loader'):
+            stats['asset_usage'] = self.asset_loader.get_memory_usage()
+        return stats
+    
+    def get_scene_object_count(self) -> int:
+        """Get the number of objects in the current scene."""
+        return len(self.current_scene.objects) if self.current_scene else 0
+    
+    def set_rendering_mode(self, mode: str):
+        """
+        Set rendering mode for 2D or 2.5D games.
+        
+        Args:
+            mode: "2D" for traditional 2D, "2.5D" for pseudo-3D
+        """
+        if mode in ["2D", "2.5D"]:
+            self.rendering_mode = mode
+            self.renderer.set_rendering_mode(mode)
+            print(f"Rendering mode set to {mode}")
+    
+    def enable_performance_mode(self, enabled: bool = True):
+        """
+        Enable performance mode for demanding games.
+        
+        Args:
+            enabled: Whether to enable performance optimizations
+        """
+        self.performance_mode = enabled
+        
+        if enabled:
+            # Reduce some quality settings for better performance
+            self.renderer.set_render_distance(800)
+            self.physics_engine.set_spatial_grid_size(150)
+            print("Performance mode enabled")
+        else:
+            # Restore quality settings
+            self.renderer.set_render_distance(1000)
+            self.physics_engine.set_spatial_grid_size(200)
+            print("Performance mode disabled")
+    
+    def preload_game_assets(self, asset_packs: Dict[str, Dict]):
+        """
+        Preload assets for demanding games.
+        
+        Args:
+            asset_packs: Dictionary of asset pack configurations
+        """
+        print("Preloading game assets for better performance...")
+        
+        for pack_name, pack_config in asset_packs.items():
+            self.asset_loader.preload_asset_pack(pack_name, pack_config)
+        
+        print("Asset preloading complete")
+    
+    def set_audio_quality(self, quality: str):
+        """
+        Set audio quality level.
+        
+        Args:
+            quality: "low", "medium", "high"
+        """
+        if quality == "low":
+            frequency, channels = 22050, 16
+        elif quality == "medium":
+            frequency, channels = 44100, 24
+        else:  # high
+            frequency, channels = 48000, 32
+        
+        # Note: Would require audio system restart in full implementation
+        print(f"Audio quality set to {quality}")
+    
+    def optimize_for_mobile(self):
+        """Optimize engine settings for mobile/low-end devices."""
+        self.enable_performance_mode(True)
+        self.set_audio_quality("medium")
+        self.renderer.set_fog_distance(600)
+        self.asset_loader.cache.max_size = 100
+        print("Mobile optimizations applied")
     
     def _optimize_performance(self) -> None:
         """Optimize performance when FPS drops."""

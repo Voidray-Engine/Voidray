@@ -330,3 +330,58 @@ class Camera(Component):
                 self.transform.rotation += max_rotation * (1 if angle_diff > 0 else -1)
         else:
             self.transform.rotation = target_angle
+"""
+VoidRay Camera
+Camera system for 2D and 2.5D rendering.
+"""
+
+from ..math.vector2 import Vector2
+from ..math.transform import Transform
+
+
+class Camera:
+    """
+    Camera for controlling view and rendering perspective.
+    """
+    
+    def __init__(self, position: Vector2 = None):
+        self.transform = Transform(position or Vector2.zero())
+        self.zoom = 1.0
+        self.rotation = 0.0
+        self.viewport_size = Vector2(800, 600)
+        
+    def set_position(self, position: Vector2):
+        """Set camera position."""
+        self.transform.position = position
+    
+    def move(self, offset: Vector2):
+        """Move camera by offset."""
+        self.transform.position += offset
+    
+    def set_zoom(self, zoom: float):
+        """Set camera zoom level."""
+        self.zoom = max(0.1, zoom)
+    
+    def set_rotation(self, rotation: float):
+        """Set camera rotation in degrees."""
+        self.rotation = rotation
+    
+    def world_to_screen(self, world_pos: Vector2) -> Vector2:
+        """Convert world coordinates to screen coordinates."""
+        relative_pos = world_pos - self.transform.position
+        screen_pos = relative_pos * self.zoom
+        screen_pos += self.viewport_size * 0.5
+        return screen_pos
+    
+    def screen_to_world(self, screen_pos: Vector2) -> Vector2:
+        """Convert screen coordinates to world coordinates."""
+        relative_pos = screen_pos - (self.viewport_size * 0.5)
+        world_pos = relative_pos / self.zoom
+        world_pos += self.transform.position
+        return world_pos
+    
+    def is_in_view(self, position: Vector2, margin: float = 50) -> bool:
+        """Check if a position is within the camera's view."""
+        screen_pos = self.world_to_screen(position)
+        return (-margin <= screen_pos.x <= self.viewport_size.x + margin and
+                -margin <= screen_pos.y <= self.viewport_size.y + margin)

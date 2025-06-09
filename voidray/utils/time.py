@@ -164,3 +164,86 @@ class Time:
     def __repr__(self) -> str:
         return (f"Time(delta_time={self.delta_time}, total_time={self.total_time}, "
                 f"frame_count={self.frame_count}, fps={self.fps})")
+"""
+VoidRay Time Utilities
+Time and timing related utilities for the engine.
+"""
+
+import time
+from typing import Optional
+
+
+class Timer:
+    """Simple timer utility for tracking elapsed time."""
+    
+    def __init__(self):
+        self.start_time = 0.0
+        self.pause_time = 0.0
+        self.paused = False
+        
+    def start(self):
+        """Start the timer."""
+        self.start_time = time.time()
+        self.paused = False
+        
+    def pause(self):
+        """Pause the timer."""
+        if not self.paused:
+            self.pause_time = time.time()
+            self.paused = True
+            
+    def resume(self):
+        """Resume the timer."""
+        if self.paused:
+            self.start_time += time.time() - self.pause_time
+            self.paused = False
+            
+    def reset(self):
+        """Reset the timer."""
+        self.start_time = time.time()
+        self.paused = False
+        
+    def elapsed(self) -> float:
+        """Get elapsed time in seconds."""
+        if self.paused:
+            return self.pause_time - self.start_time
+        return time.time() - self.start_time
+    
+    def elapsed_ms(self) -> float:
+        """Get elapsed time in milliseconds."""
+        return self.elapsed() * 1000.0
+
+
+class FrameTimer:
+    """Frame timing utility for performance monitoring."""
+    
+    def __init__(self, sample_size: int = 60):
+        self.sample_size = sample_size
+        self.frame_times = []
+        self.last_frame_time = time.time()
+        
+    def tick(self) -> float:
+        """Update frame timing and return delta time."""
+        current_time = time.time()
+        delta_time = current_time - self.last_frame_time
+        
+        self.frame_times.append(delta_time)
+        if len(self.frame_times) > self.sample_size:
+            self.frame_times.pop(0)
+            
+        self.last_frame_time = current_time
+        return delta_time
+    
+    def get_avg_fps(self) -> float:
+        """Get average FPS over the sample period."""
+        if not self.frame_times:
+            return 0.0
+        avg_frame_time = sum(self.frame_times) / len(self.frame_times)
+        return 1.0 / avg_frame_time if avg_frame_time > 0 else 0.0
+    
+    def get_min_fps(self) -> float:
+        """Get minimum FPS over the sample period."""
+        if not self.frame_times:
+            return 0.0
+        max_frame_time = max(self.frame_times)
+        return 1.0 / max_frame_time if max_frame_time > 0 else 0.0
