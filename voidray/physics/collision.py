@@ -47,7 +47,37 @@ class Collider(Component):
             other: The other collider involved in the collision
             collision_info: Information about the collision
         """
-        pass
+        # Handle player-ball collisions
+        if self.game_object and other.game_object:
+            # Check if this is a player hitting a ball
+            if (hasattr(self.game_object, 'name') and 'Player' in self.game_object.name and
+                hasattr(other.game_object, 'name') and 'Ball' in other.game_object.name):
+                
+                # Get the ball's rigidbody
+                ball_rb = other.game_object.get_component(Rigidbody)
+                if ball_rb:
+                    # Calculate push direction from player to ball
+                    push_direction = (other.game_object.transform.position - 
+                                    self.game_object.transform.position).normalized()
+                    
+                    # Apply impulse to push the ball away
+                    push_force = push_direction * 300  # Adjust force as needed
+                    ball_rb.add_impulse(push_force)
+            
+            # Check if this is a ball hitting a player (reverse case)
+            elif (hasattr(self.game_object, 'name') and 'Ball' in self.game_object.name and
+                  hasattr(other.game_object, 'name') and 'Player' in other.game_object.name):
+                
+                # Get this ball's rigidbody
+                ball_rb = self.game_object.get_component(Rigidbody)
+                if ball_rb:
+                    # Calculate push direction from player to ball
+                    push_direction = (self.game_object.transform.position - 
+                                    other.game_object.transform.position).normalized()
+                    
+                    # Apply impulse to push the ball away
+                    push_force = push_direction * 300  # Adjust force as needed
+                    ball_rb.add_impulse(push_force)
     
     def get_bounds(self) -> pygame.Rect:
         """
@@ -195,11 +225,17 @@ class CollisionDetector:
                 normal = Vector2(0, 1 if center_a.y < center_b.y else -1)
                 penetration = overlap_y
             
-            return {
+            collision_info = {
                 'normal': normal,
                 'penetration': penetration,
                 'point': center_a + (center_b - center_a) * 0.5
             }
+            
+            # Trigger collision callbacks
+            box_a.on_collision(box_b, collision_info)
+            box_b.on_collision(box_a, collision_info)
+            
+            return collision_info
         
         return None
     
@@ -228,11 +264,17 @@ class CollisionDetector:
             penetration = combined_radius - distance
             collision_point = center_a + normal * radius_a
             
-            return {
+            collision_info = {
                 'normal': normal,
                 'penetration': penetration,
                 'point': collision_point
             }
+            
+            # Trigger collision callbacks
+            circle_a.on_collision(circle_b, collision_info)
+            circle_b.on_collision(circle_a, collision_info)
+            
+            return collision_info
         
         return None
     
@@ -264,11 +306,17 @@ class CollisionDetector:
             
             penetration = circle_radius - distance
             
-            return {
+            collision_info = {
                 'normal': normal,
                 'penetration': penetration,
                 'point': closest_point
             }
+            
+            # Trigger collision callbacks
+            box.on_collision(circle, collision_info)
+            circle.on_collision(box, collision_info)
+            
+            return collision_info
         
         return None
     

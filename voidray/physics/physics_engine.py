@@ -111,18 +111,25 @@ class PhysicsEngine:
         """
         # Apply physics if object has a rigidbody component
         if collider.game_object:
-            rigidbody = collider.game_object.get_component(type(None).__class__)
-            
-            # Check if this is a rigidbody by looking for velocity attribute
-            if hasattr(collider, 'velocity'):
-                # Apply gravity only if enabled
-                if self.gravity.magnitude() > 0:
-                    collider.velocity += self.gravity * delta_time
-                
-                # Apply velocity to position
-                current_pos = collider.game_object.transform.position
-                new_pos = current_pos + collider.velocity * delta_time
-                collider.game_object.transform.position = new_pos
+            # Try to get rigidbody component
+            try:
+                from .rigidbody import Rigidbody
+                rigidbody = collider.game_object.get_component(Rigidbody)
+                if rigidbody:
+                    # Apply gravity only if enabled
+                    if self.gravity.magnitude() > 0:
+                        rigidbody.velocity += self.gravity * delta_time
+                    
+                    # Clamp velocity to max
+                    if rigidbody.velocity.magnitude() > self.max_velocity:
+                        rigidbody.velocity = rigidbody.velocity.normalized() * self.max_velocity
+                    
+                    # Apply velocity to position
+                    current_pos = collider.game_object.transform.position
+                    new_pos = current_pos + rigidbody.velocity * delta_time * self.time_scale
+                    collider.game_object.transform.position = new_pos
+            except ImportError:
+                pass  # Rigidbody component not available
     
     def _check_collisions(self):
         """
@@ -187,8 +194,14 @@ class PhysicsEngine:
                 collider2.game_object.transform.position += separation
                 # Stop velocity in collision direction
                 if separation.magnitude() > 0:
-                    normal = separation.normalized()
-                    collider2.velocity = collider2.velocity - normal * collider2.velocity.dot(normal)
+                    try:
+                        from .rigidbody import Rigidbody
+                        rigidbody = collider2.game_object.get_component(Rigidbody)
+                        if rigidbody:
+                            normal = separation.normalized()
+                            rigidbody.velocity = rigidbody.velocity - normal * rigidbody.velocity.dot(normal)
+                    except ImportError:
+                        pass
         elif collider2.is_static:
             # Only move collider1
             separation = self._get_separation_vector(collider1, collider2)
@@ -196,8 +209,14 @@ class PhysicsEngine:
                 collider1.game_object.transform.position += separation
                 # Stop velocity in collision direction
                 if separation.magnitude() > 0:
-                    normal = separation.normalized()
-                    collider1.velocity = collider1.velocity - normal * collider1.velocity.dot(normal)
+                    try:
+                        from .rigidbody import Rigidbody
+                        rigidbody = collider1.game_object.get_component(Rigidbody)
+                        if rigidbody:
+                            normal = separation.normalized()
+                            rigidbody.velocity = rigidbody.velocity - normal * rigidbody.velocity.dot(normal)
+                    except ImportError:
+                        pass
         else:
             # Move both objects
             separation = self._get_separation_vector(collider1, collider2)

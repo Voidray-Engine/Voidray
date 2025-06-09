@@ -1,275 +1,287 @@
+
 """
-VoidRay GameObject
-Base class for all game objects in the VoidRay engine.
+VoidRay GameObject System
+Base class for all entities in the game world.
 """
 
-from typing import List, Optional, TYPE_CHECKING
-from ..math.vector2 import Vector2
+from typing import List, Optional, Dict, Any, Type
+from .component import Component
 from ..math.transform import Transform
-
-if TYPE_CHECKING:
-    from .scene import Scene
 
 
 class GameObject:
     """
-    Base class for all game objects. Provides basic functionality for
-    position, rotation, scale, and hierarchical relationships.
+    Base class for all game objects.
+    Uses a component-based architecture for modular functionality.
     """
     
     def __init__(self, name: str = "GameObject"):
         """
-        Initialize a new GameObject.
+        Initialize the game object.
         
         Args:
             name: Name identifier for this object
         """
         self.name = name
         self.active = True
-        
-        # Transform component
         self.transform = Transform()
+        self.components: Dict[Type[Component], Component] = {}
+        self.scene = None
         
-        # Hierarchy
-        self.parent: Optional['GameObject'] = None
-        self.children: List['GameObject'] = []
+        # Layer and rendering
+        self.layer = "world"
+        self.z_order = 0
+        self.tags = set()
         
-        # Scene reference
-        self.scene: Optional['Scene'] = None
-        
-        # Component system (simple tag-based for now)
-        self.tags: List[str] = []
-        self.components: List = []
+        # Lifecycle flags
+        self._started = False
+        self._destroyed = False
     
-    def update(self, delta_time: float):
+    def add_component(self, component: Component):
         """
-        Update this game object. Override in subclasses.
+        Add a component to this game object.
         
         Args:
-            delta_time: Time elapsed since last frame in seconds
+            component: Component instance to add
         """
-        if not self.active:
+        component_type = type(component)
+        
+        if component_type in self.components:
+            print(f"Warning: GameObject '{self.name}' already has component {component_type.__name__}")
             return
         
-        # Update all components
-        for component in self.components:
-            if component.enabled and hasattr(component, 'update'):
-                component.update(delta_time)
+        self.components[component_type] = component
+        component.game_object = self
         
-        # Update all children
-        for child in self.children:
-            child.update(delta_time)
+        # Call component initialization
+        if hasattr(component, 'on_add'):
+            component.on_add()
     
-    def render(self, renderer):
+    def remove_component(self, component_type: Type[Component]):
         """
-        Render this game object. Override in subclasses.
+        Remove a component from this game object.
         
         Args:
-            renderer: The renderer to draw with
+            component_type: Type of component to remove
         """
-        if not self.active:
-            return
-        
-        # Render all children
-        for child in self.children:
-            child.render(renderer)
+        if component_type in self.components:
+            component = self.components[component_type]
+            
+            # Call component cleanup
+            if hasattr(component, 'on_remove'):
+                component.on_remove()
+            
+            component.game_object = None
+            del self.components[component_type]
     
-    def add_child(self, child: 'GameObject'):
+    def get_component(self, component_type: Type[Component]) -> Optional[Component]:
         """
-        Add a child object to this GameObject.
+        Get a component of the specified type.
         
         Args:
-            child: The child GameObject to add
-        """
-        if child.parent:
-            child.parent.remove_child(child)
-        
-        child.parent = self
-        child.scene = self.scene
-        self.children.append(child)
-    
-    def remove_child(self, child: 'GameObject'):
-        """
-        Remove a child object from this GameObject.
-        
-        Args:
-            child: The child GameObject to remove
-        """
-        if child in self.children:
-            child.parent = None
-            self.children.remove(child)
-    
-    def get_child(self, name: str) -> Optional['GameObject']:
-        """
-        Find a child by name.
-        
-        Args:
-            name: Name of the child to find
+            component_type: Type of component to get
             
         Returns:
-            The child GameObject or None if not found
+            Component instance or None if not found
         """
-        for child in self.children:
-            if child.name == name:
-                return child
-        return None
+        return self.components.get(component_type)
     
-    def get_children_with_tag(self, tag: str) -> List['GameObject']:
+    def has_component(self, component_type: Type[Component]) -> bool:
         """
-        Get all children with a specific tag.
+        Check if this object has a component of the specified type.
         
         Args:
-            tag: Tag to search for
+            component_type: Type of component to check
             
         Returns:
-            List of GameObjects with the specified tag
+            True if component exists, False otherwise
         """
-        return [child for child in self.children if tag in child.tags]
+        return component_type in self.components
+    
+    def get_components(self) -> List[Component]:
+        """
+        Get all components attached to this game object.
+        
+        Returns:
+            List of all components
+        """
+        return list(self.components.values())
     
     def add_tag(self, tag: str):
         """
-        Add a tag to this GameObject.
+        Add a tag to this game object.
         
         Args:
             tag: Tag to add
         """
-        if tag not in self.tags:
-            self.tags.append(tag)
+        self.tags.add(tag)
     
     def remove_tag(self, tag: str):
         """
-        Remove a tag from this GameObject.
+        Remove a tag from this game object.
         
         Args:
             tag: Tag to remove
         """
-        if tag in self.tags:
-            self.tags.remove(tag)
+        self.tags.discard(tag)
     
     def has_tag(self, tag: str) -> bool:
         """
-        Check if this GameObject has a specific tag.
+        Check if this object has a specific tag.
         
         Args:
             tag: Tag to check for
             
         Returns:
-            True if the object has the tag, False otherwise
+            True if object has the tag, False otherwise
         """
         return tag in self.tags
     
-    def get_world_position(self) -> Vector2:
+    def set_layer(self, layer: str):
         """
-        Get the world position of this GameObject.
+        Set the rendering layer for this object.
         
-        Returns:
-            World position as Vector2
+        Args:
+            layer: Layer name
         """
-        if self.parent:
-            return self.parent.get_world_position() + self.transform.position
-        return self.transform.position.copy()
+        old_layer = self.layer
+        self.layer = layer
+        
+        # Update scene layer management if object is in a scene
+        if self.scene:
+            # Remove from old layer
+            if old_layer in self.scene.layers and self in self.scene.layers[old_layer]:
+                self.scene.layers[old_layer].remove(self)
+            
+            # Add to new layer
+            if layer not in self.scene.layers:
+                self.scene.layers[layer] = []
+            self.scene.layers[layer].append(self)
     
-    def get_world_scale(self) -> Vector2:
+    def destroy(self):
         """
-        Get the world scale of this GameObject.
+        Mark this object for destruction.
+        """
+        self._destroyed = True
+        self.active = False
         
-        Returns:
-            World scale as Vector2
+        # Remove from scene
+        if self.scene:
+            self.scene.remove_object(self)
+        
+        # Cleanup components
+        for component in list(self.components.values()):
+            self.remove_component(type(component))
+    
+    def start(self):
         """
-        if self.parent:
-            parent_scale = self.parent.get_world_scale()
-            return Vector2(
-                self.transform.scale.x * parent_scale.x,
-                self.transform.scale.y * parent_scale.y
-            )
-        return self.transform.scale.copy()
+        Called when the object is first created and added to a scene.
+        Override this method for initialization logic.
+        """
+        if self._started:
+            return
+        
+        self._started = True
+        
+        # Start all components
+        for component in self.components.values():
+            if hasattr(component, 'start'):
+                component.start()
+    
+    def update(self, delta_time: float):
+        """
+        Update the game object and all its components.
+        
+        Args:
+            delta_time: Time elapsed since last frame
+        """
+        if not self.active or self._destroyed:
+            return
+        
+        # Ensure object is started
+        if not self._started:
+            self.start()
+        
+        # Update all components
+        for component in self.components.values():
+            if component.enabled and hasattr(component, 'update'):
+                component.update(delta_time)
+    
+    def render(self, renderer):
+        """
+        Render the game object and all its components.
+        
+        Args:
+            renderer: Renderer instance
+        """
+        if not self.active or self._destroyed:
+            return
+        
+        # Render all components
+        for component in self.components.values():
+            if component.enabled and hasattr(component, 'render'):
+                component.render(renderer)
+    
+    def on_scene_enter(self):
+        """Called when this object's scene becomes active."""
+        for component in self.components.values():
+            if hasattr(component, 'on_scene_enter'):
+                component.on_scene_enter()
+    
+    def on_scene_exit(self):
+        """Called when this object's scene becomes inactive."""
+        for component in self.components.values():
+            if hasattr(component, 'on_scene_exit'):
+                component.on_scene_exit()
+    
+    def find_object_by_name(self, name: str) -> Optional['GameObject']:
+        """
+        Find another object in the same scene by name.
+        
+        Args:
+            name: Name to search for
+            
+        Returns:
+            GameObject with matching name or None
+        """
+        if self.scene:
+            return self.scene.find_object_by_name(name)
+        return None
+    
+    def find_objects_by_tag(self, tag: str) -> List['GameObject']:
+        """
+        Find all objects in the same scene with a specific tag.
+        
+        Args:
+            tag: Tag to search for
+            
+        Returns:
+            List of GameObjects with matching tag
+        """
+        if self.scene:
+            return self.scene.find_objects_by_tag(tag)
+        return []
     
     def get_world_rotation(self) -> float:
         """
-        Get the world rotation of this GameObject.
+        Get the world rotation of this game object.
         
         Returns:
             World rotation in degrees
         """
-        if self.parent:
-            return self.parent.get_world_rotation() + self.transform.rotation
         return self.transform.rotation
     
-    def add_component(self, component):
+    def get_world_scale(self):
         """
-        Add a component to this GameObject.
+        Get the world scale of this game object.
         
-        Args:
-            component: The component to add
-        """
-        if component not in self.components:
-            self.components.append(component)
-            component.game_object = self
-            if hasattr(component, 'on_attach'):
-                component.on_attach()
-    
-    def remove_component(self, component):
-        """
-        Remove a component from this GameObject.
-        
-        Args:
-            component: The component to remove
-        """
-        if component in self.components:
-            if hasattr(component, 'on_detach'):
-                component.on_detach()
-            component.game_object = None
-            self.components.remove(component)
-    
-    def get_component(self, component_type):
-        """
-        Get the first component of the specified type.
-        
-        Args:
-            component_type: The type of component to find
-            
         Returns:
-            The component or None if not found
+            World scale as Vector2
         """
-        for component in self.components:
-            if isinstance(component, component_type):
-                return component
-        return None
+        return self.transform.scale
     
-    def get_components(self, component_type):
-        """
-        Get all components of the specified type.
-        
-        Args:
-            component_type: The type of components to find
-            
-        Returns:
-            List of components of the specified type
-        """
-        return [component for component in self.components if isinstance(component, component_type)]
+    def __str__(self):
+        return f"GameObject(name='{self.name}', active={self.active}, components={len(self.components)})"
     
-    def destroy(self):
-        """
-        Mark this GameObject for destruction and remove from parent.
-        """
-        if self.parent:
-            self.parent.remove_child(self)
-        
-        if self.scene:
-            self.scene.remove_object(self)
-        
-        # Remove all components
-        for component in self.components.copy():
-            self.remove_component(component)
-        
-        # Destroy all children
-        for child in self.children.copy():
-            child.destroy()
-        
-        self.active = False
-    
-    def __str__(self) -> str:
-        return f"GameObject(name='{self.name}', active={self.active})"
-    
-    def __repr__(self) -> str:
+    def __repr__(self):
         return self.__str__()

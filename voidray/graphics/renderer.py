@@ -218,3 +218,35 @@ class Renderer:
         """
         font = pygame.font.Font(font_name, font_size)
         return font.size(text)
+    
+    def set_rendering_mode(self, mode: str):
+        """
+        Set rendering mode for 2D or 2.5D games.
+        
+        Args:
+            mode: "2D" for traditional 2D, "2.5D" for pseudo-3D
+        """
+        self.rendering_mode = mode
+    
+    def set_render_distance(self, distance: float):
+        """
+        Set render distance for culling optimization.
+        
+        Args:
+            distance: Maximum render distance
+        """
+        self.render_distance = distance
+    
+    def set_fog_distance(self, distance: float):
+        """
+        Set fog distance for atmospheric effects.
+        
+        Args:
+            distance: Fog start distance
+        """
+        self.fog_distance = distance
+    
+    def clear_sprite_cache(self):
+        """Clear sprite cache to free memory."""
+        # Implementation would clear any cached sprites
+        pass
