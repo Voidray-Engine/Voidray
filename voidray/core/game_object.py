@@ -74,7 +74,7 @@ class GameObject:
             component.game_object = None
             del self.components[component_type]
     
-    def get_component(self, component_type: Type[Component]) -> Optional[Component]:
+    def get_component(self, component_type) -> Optional[Component]:
         """
         Get a component of the specified type.
         
@@ -84,7 +84,16 @@ class GameObject:
         Returns:
             Component instance or None if not found
         """
-        return self.components.get(component_type)
+        # Handle both type objects and callable lambdas
+        if callable(component_type) and not isinstance(component_type, type):
+            # Lambda function case
+            for comp_type, component in self.components.items():
+                if component_type(component):
+                    return component
+            return None
+        else:
+            # Direct type case
+            return self.components.get(component_type)
     
     def has_component(self, component_type: Type[Component]) -> bool:
         """

@@ -159,16 +159,26 @@ class VoidRayEngine:
         # Initialize Pygame
         pygame.init()
 
-        # Create the display window
-        self.screen = pygame.display.set_mode((self.width, self.height))
+        # Create the display window with explicit flags
+        flags = pygame.DOUBLEBUF
+        self.screen = pygame.display.set_mode((self.width, self.height), flags)
         pygame.display.set_caption(self.title)
+        
+        # Fill screen with black initially to ensure it's visible
+        self.screen.fill((0, 0, 0))
+        pygame.display.flip()
         
         # Initialize the clock
         self.clock = pygame.time.Clock()
 
         # Initialize systems
-        from ..rendering.renderer import Advanced2DRenderer
-        self.renderer = Advanced2DRenderer(self.screen)
+        try:
+            from ..rendering.renderer import Advanced2DRenderer
+            self.renderer = Advanced2DRenderer(self.screen)
+        except ImportError:
+            # Fallback to basic renderer
+            from ..graphics.renderer import Renderer
+            self.renderer = Renderer(self.screen)
         self.input_manager = InputManager()
         self.asset_loader = AssetLoader(cache_size=500, enable_streaming=True)
         self.audio_manager = AudioManager(channels=32)
@@ -178,6 +188,8 @@ class VoidRayEngine:
         try:
             from ..physics.physics_system import PhysicsSystem
             self.physics_system = PhysicsSystem()
+            # Connect the systems
+            self.physics_system.physics_engine = self.physics_engine
         except ImportError:
             self.physics_system = self.physics_engine
 
@@ -303,13 +315,21 @@ class VoidRayEngine:
                     if self.render_callback:
                         self.render_callback()
 
-                    # Render debug overlay
-                    self.debug_overlay.render(self.renderer)
+                    # Render debug overlay if available
+                    if hasattr(self, 'debug_overlay'):
+                        self.debug_overlay.render(self.renderer)
 
+                    # Ensure the display is updated
                     self.renderer.present()
+                    
+                    # Force pygame event processing to keep window responsive
+                    pygame.event.pump()
 
                 except Exception as e:
                     engine_logger.error(f"Render error: {e}")
+                    print(f"Render error details: {e}")
+                    import traceback
+                    traceback.print_exc()
                     # Continue running instead of crashing
 
         except Exception as e:
@@ -461,22 +481,7 @@ class VoidRayEngine:
         # Optimize physics
         self.physics_engine.optimize_performance()
 
-    def get_engine_stats(self) -> dict:
-        """Get engine performance statistics."""
-        stats = self.engine_stats.copy()
-        if hasattr(self, 'audio_manager'):
-            stats['audio_info'] = self.audio_manager.get_audio_info()
-        if hasattr(self, 'asset_loader'):
-            stats['asset_usage'] = self.asset_loader.get_memory_usage()
-        return stats
-
-    def set_rendering_mode(self, mode: str):
-        """Set rendering mode to 2D or 2.5D."""
-        if mode in ["2D", "2.5D"]:
-            self.rendering_mode = mode
-            print(f"Rendering mode set to: {mode}")
-        else:
-            print(f"Invalid rendering mode: {mode}. Use '2D' or '2.5D'")
+    
 
     def load_level(self, level_name: str, scene_name: str = None):
         """Load a 2.5D level into the current or specified scene."""

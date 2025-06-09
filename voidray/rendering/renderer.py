@@ -436,6 +436,11 @@ class Advanced2DRenderer:
         if shadows is not None:
             self.enable_shadows = shadows
 
+    def clear_sprite_cache(self):
+        """Clear sprite cache to free memory."""
+        self.sprite_textures.clear()
+        print("Sprite cache cleared")
+
     # Standard 2D rendering methods (enhanced)
     def world_to_screen(self, world_pos: Vector2) -> Vector2:
         """Convert world coordinates to screen coordinates."""
