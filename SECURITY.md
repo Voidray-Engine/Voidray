@@ -28,8 +28,7 @@ If you discover a security vulnerability that could affect user safety or data s
 
 Instead, please:
 
-1. **Email us privately**: security@voidray-engine.org
-2. **Include in your report**:
+1. **Include in your report**:
    - Detailed description of the vulnerability
    - Steps to reproduce the issue
    - Potential impact assessment
