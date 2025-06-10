@@ -1,139 +1,189 @@
 
 """
-VoidRay Physics Engine
-Core physics simulation and collision detection system.
+VoidRay Advanced Physics Engine
+Enhanced physics simulation with optimized collision detection, advanced features, and improved performance.
 """
 
-from typing import List, Callable, Optional, Set, Dict, Any
+from typing import List, Callable, Optional, Set, Dict, Any, Tuple
 from ..math.vector2 import Vector2
 from .collider import Collider
+import time
 
 
 class PhysicsEngine:
     """
-    The main physics engine that handles collision detection and resolution.
+    Advanced physics engine with optimized collision detection and enhanced features.
     """
     
     def __init__(self):
-        """
-        Initialize the physics engine.
-        """
-        self.gravity = Vector2(0, 0)  # No gravity by default
+        """Initialize the advanced physics engine."""
+        self.gravity = Vector2(0, 0)
         self.colliders: List[Collider] = []
         self.collision_callbacks: List[Callable[[Collider, Collider, Dict[str, Any]], None]] = []
-        self.spatial_grid_size = 128.0
+        
+        # Advanced spatial partitioning
+        self.spatial_grid_size = 64.0
+        self.spatial_grid: Dict[Tuple[int, int], List[Collider]] = {}
+        
+        # Performance optimizations
         self.max_velocity = 2000.0
         self.time_scale = 1.0
-        self.collision_iterations = 1  # Number of collision resolution iterations
+        self.collision_iterations = 2
+        self.position_correction_percent = 0.8
+        self.penetration_slop = 0.01
+        
+        # Advanced features
+        self.enable_continuous_collision = True
+        self.enable_sleeping = True
+        self.sleep_velocity_threshold = 0.5
+        self.sleep_time_threshold = 1.0
         
         # Performance tracking
         self._collision_checks_this_frame = 0
         self._active_colliders_cache: List[Collider] = []
+        self._sleeping_colliders: Set[Collider] = set()
         self._cache_dirty = True
-    
+        self._frame_time = 0.0
+        
+        # Collision resolution improvements
+        self.restitution_threshold = 1.0
+        self.friction_combine_mode = "average"  # "average", "multiply", "min", "max"
+        
+        print("Advanced Physics Engine initialized")
+
     def set_gravity(self, gravity: float):
-        """
-        Set gravity strength (positive for downward).
-        
-        Args:
-            gravity: Gravity strength in pixels per second squared
-        """
+        """Set gravity strength (positive for downward)."""
         self.gravity = Vector2(0, gravity)
-    
-    def set_time_scale(self, scale: float):
-        """
-        Set physics time scale for slow motion or speed up effects.
-        
-        Args:
-            scale: Time scale multiplier (1.0 = normal, 0.5 = half speed, 2.0 = double speed)
-        """
-        self.time_scale = max(0.0, scale)
-    
-    def set_max_velocity(self, max_vel: float):
-        """
-        Set maximum velocity to prevent objects from moving too fast.
-        
-        Args:
-            max_vel: Maximum velocity in pixels per second
-        """
-        self.max_velocity = max_vel
-        
+
+    def set_advanced_settings(self, **kwargs):
+        """Configure advanced physics settings."""
+        if 'continuous_collision' in kwargs:
+            self.enable_continuous_collision = kwargs['continuous_collision']
+        if 'sleeping' in kwargs:
+            self.enable_sleeping = kwargs['sleeping']
+        if 'sleep_threshold' in kwargs:
+            self.sleep_velocity_threshold = kwargs['sleep_threshold']
+        if 'iterations' in kwargs:
+            self.collision_iterations = max(1, kwargs['iterations'])
+        if 'grid_size' in kwargs:
+            self.spatial_grid_size = max(32.0, kwargs['grid_size'])
+
     def add_collider(self, collider: Collider):
-        """
-        Add a collider to the physics simulation.
-        
-        Args:
-            collider: The collider to add
-        """
+        """Add a collider with enhanced tracking."""
         if collider not in self.colliders:
             self.colliders.append(collider)
             self._cache_dirty = True
-    
+            # Initialize sleep state
+            if hasattr(collider, 'sleep_timer'):
+                collider.sleep_timer = 0.0
+                collider.is_sleeping = False
+
     def remove_collider(self, collider: Collider):
-        """
-        Remove a collider from the physics simulation.
-        
-        Args:
-            collider: The collider to remove
-        """
+        """Remove a collider with cleanup."""
         if collider in self.colliders:
             self.colliders.remove(collider)
+            self._sleeping_colliders.discard(collider)
             self._cache_dirty = True
-    
-    def add_collision_callback(self, callback: Callable[[Collider, Collider, Dict[str, Any]], None]):
-        """
-        Add a callback function that will be called when collisions occur.
-        
-        Args:
-            callback: Function to call with (collider1, collider2, collision_info) parameters
-        """
-        self.collision_callbacks.append(callback)
-    
+            # Clear from spatial grid
+            self._remove_from_spatial_grid(collider)
+
     def update(self, delta_time: float):
-        """
-        Update physics simulation with optimizations.
+        """Enhanced physics update with advanced features."""
+        start_time = time.perf_counter()
         
-        Args:
-            delta_time: Time elapsed since last frame in seconds
-        """
         # Reset performance counters
         self._collision_checks_this_frame = 0
         
-        # Update active colliders cache if needed
+        # Update caches if needed
         if self._cache_dirty:
             self._update_active_colliders_cache()
+            self._rebuild_spatial_grid()
         
         if not self._active_colliders_cache:
             return
         
-        # Update all active colliders with rigidbodies
-        for collider in self._active_colliders_cache:
-            self._update_collider(collider, delta_time)
+        # Wake up sleeping colliders if forces are applied
+        self._check_wake_conditions()
         
-        # Perform collision detection and resolution
+        # Update physics for active colliders
+        for collider in self._active_colliders_cache:
+            if collider not in self._sleeping_colliders:
+                self._update_collider_physics(collider, delta_time)
+        
+        # Multiple iteration collision resolution
         for iteration in range(self.collision_iterations):
-            self._check_collisions_optimized(self._active_colliders_cache)
-    
+            self._perform_collision_detection()
+            if iteration < self.collision_iterations - 1:
+                self._update_spatial_grid()
+        
+        # Check for sleeping colliders
+        if self.enable_sleeping:
+            self._check_sleeping_conditions(delta_time)
+        
+        # Performance tracking
+        self._frame_time = time.perf_counter() - start_time
+
     def _update_active_colliders_cache(self):
-        """Update the cache of active colliders."""
+        """Update the cache of active colliders with better filtering."""
         self._active_colliders_cache = [
             c for c in self.colliders 
-            if c.game_object and c.game_object.active
+            if (c.game_object and c.game_object.active and 
+                not getattr(c, 'is_destroyed', False))
         ]
         self._cache_dirty = False
-    
-    def _update_collider(self, collider: Collider, delta_time: float):
-        """
-        Update a single collider's physics.
+
+    def _rebuild_spatial_grid(self):
+        """Rebuild the spatial partitioning grid."""
+        self.spatial_grid.clear()
+        for collider in self._active_colliders_cache:
+            self._add_to_spatial_grid(collider)
+
+    def _update_spatial_grid(self):
+        """Update spatial grid for moved objects."""
+        for collider in self._active_colliders_cache:
+            if collider not in self._sleeping_colliders:
+                self._remove_from_spatial_grid(collider)
+                self._add_to_spatial_grid(collider)
+
+    def _add_to_spatial_grid(self, collider: Collider):
+        """Add collider to spatial grid."""
+        if not collider.game_object:
+            return
+            
+        pos = collider.get_world_position()
+        bounds_radius = collider.get_bounds_radius()
         
-        Args:
-            collider: The collider to update
-            delta_time: Time elapsed since last frame
-        """
+        # Calculate grid cells
+        min_x = int((pos.x - bounds_radius) // self.spatial_grid_size)
+        max_x = int((pos.x + bounds_radius) // self.spatial_grid_size)
+        min_y = int((pos.y - bounds_radius) // self.spatial_grid_size)
+        max_y = int((pos.y + bounds_radius) // self.spatial_grid_size)
+        
+        for grid_x in range(min_x, max_x + 1):
+            for grid_y in range(min_y, max_y + 1):
+                grid_key = (grid_x, grid_y)
+                if grid_key not in self.spatial_grid:
+                    self.spatial_grid[grid_key] = []
+                if collider not in self.spatial_grid[grid_key]:
+                    self.spatial_grid[grid_key].append(collider)
+
+    def _remove_from_spatial_grid(self, collider: Collider):
+        """Remove collider from spatial grid."""
+        keys_to_clean = []
+        for grid_key, colliders in self.spatial_grid.items():
+            if collider in colliders:
+                colliders.remove(collider)
+                if not colliders:
+                    keys_to_clean.append(grid_key)
+        
+        for key in keys_to_clean:
+            del self.spatial_grid[key]
+
+    def _update_collider_physics(self, collider: Collider, delta_time: float):
+        """Enhanced collider physics update."""
         if not collider.game_object:
             return
         
-        # Try to get rigidbody component
         try:
             from .rigidbody import Rigidbody
             rigidbody = collider.game_object.get_component(Rigidbody)
@@ -142,127 +192,141 @@ class PhysicsEngine:
                 if rigidbody.use_gravity and self.gravity.magnitude() > 0:
                     rigidbody.add_force(self.gravity * rigidbody.mass)
                 
+                # Store previous position for continuous collision detection
+                if self.enable_continuous_collision:
+                    rigidbody.previous_position = rigidbody.game_object.transform.position
+                
                 # Update rigidbody physics
                 rigidbody.update(delta_time * self.time_scale)
                 
-                # Clamp velocity to max
+                # Velocity limiting
                 if rigidbody.velocity.magnitude() > self.max_velocity:
                     rigidbody.velocity = rigidbody.velocity.normalized() * self.max_velocity
+                
+                # Advanced damping
+                self._apply_advanced_damping(rigidbody, delta_time)
+                
         except ImportError:
             pass
-    
-    def _check_collisions_optimized(self, active_colliders: List[Collider]):
-        """
-        Optimized collision detection using spatial partitioning.
+
+    def _apply_advanced_damping(self, rigidbody, delta_time: float):
+        """Apply advanced damping effects."""
+        # Air resistance (quadratic drag)
+        if rigidbody.velocity.magnitude() > 0:
+            drag_force = rigidbody.velocity.normalized() * -rigidbody.drag * rigidbody.velocity.magnitude_squared()
+            rigidbody.add_force(drag_force * delta_time)
         
-        Args:
-            active_colliders: List of active colliders to check
-        """
-        # Spatial partitioning
-        collision_grid: Dict[tuple, List[Collider]] = {}
+        # Angular damping
+        if hasattr(rigidbody, 'angular_velocity') and hasattr(rigidbody, 'angular_drag'):
+            rigidbody.angular_velocity *= (1.0 - rigidbody.angular_drag * delta_time)
+
+    def _perform_collision_detection(self):
+        """Enhanced collision detection with spatial partitioning."""
+        checked_pairs: Set[Tuple[int, int]] = set()
         
-        # Group colliders by grid cell
-        for collider in active_colliders:
-            if collider.game_object:
-                pos = collider.get_world_position()
-                bounds_radius = collider.get_bounds_radius()
+        for grid_colliders in self.spatial_grid.values():
+            if len(grid_colliders) < 2:
+                continue
                 
-                # Calculate grid cells this collider might occupy
-                min_x = int((pos.x - bounds_radius) // self.spatial_grid_size)
-                max_x = int((pos.x + bounds_radius) // self.spatial_grid_size)
-                min_y = int((pos.y - bounds_radius) // self.spatial_grid_size)
-                max_y = int((pos.y + bounds_radius) // self.spatial_grid_size)
-                
-                for grid_x in range(min_x, max_x + 1):
-                    for grid_y in range(min_y, max_y + 1):
-                        grid_key = (grid_x, grid_y)
-                        if grid_key not in collision_grid:
-                            collision_grid[grid_key] = []
-                        collision_grid[grid_key].append(collider)
-        
-        # Check collisions within each grid cell
-        checked_pairs: Set[tuple] = set()
-        
-        for colliders_in_cell in collision_grid.values():
-            for i in range(len(colliders_in_cell)):
-                for j in range(i + 1, len(colliders_in_cell)):
-                    collider1, collider2 = colliders_in_cell[i], colliders_in_cell[j]
-                    pair = tuple(sorted([id(collider1), id(collider2)]))
+            for i in range(len(grid_colliders)):
+                for j in range(i + 1, len(grid_colliders)):
+                    collider1, collider2 = grid_colliders[i], grid_colliders[j]
                     
-                    if pair not in checked_pairs:
-                        checked_pairs.add(pair)
+                    # Create unique pair ID
+                    pair_id = (min(id(collider1), id(collider2)), max(id(collider1), id(collider2)))
+                    
+                    if pair_id not in checked_pairs:
+                        checked_pairs.add(pair_id)
+                        
+                        # Skip sleeping pairs
+                        if (collider1 in self._sleeping_colliders and 
+                            collider2 in self._sleeping_colliders):
+                            continue
+                        
                         self._process_collision_pair(collider1, collider2)
-    
+
     def _process_collision_pair(self, collider1: Collider, collider2: Collider):
-        """
-        Process a collision pair with all checks.
-        
-        Args:
-            collider1: First collider
-            collider2: Second collider
-        """
-        # Skip if both are static
-        if collider1.is_static and collider2.is_static:
+        """Enhanced collision pair processing."""
+        # Broad phase checks
+        if not self._should_process_collision(collider1, collider2):
             return
         
-        # Skip if either object is inactive
-        if (not collider1.game_object or not collider1.game_object.active or
-            not collider2.game_object or not collider2.game_object.active):
-            return
-        
-        # Skip if they're on incompatible layers
-        if not self._should_collide(collider1, collider2):
-            return
-        
-        # Increment collision check counter
         self._collision_checks_this_frame += 1
         
-        # Get detailed collision information
-        collision_info = collider1.get_collision_info(collider2)
+        # Enhanced collision detection
+        collision_info = self._get_enhanced_collision_info(collider1, collider2)
         
         if collision_info:
-            # Call global collision callbacks
-            for callback in self.collision_callbacks:
-                try:
-                    callback(collider1, collider2, collision_info)
-                except Exception as e:
-                    print(f"Error in collision callback: {e}")
+            # Wake up sleeping colliders
+            if collider1 in self._sleeping_colliders:
+                self._wake_collider(collider1)
+            if collider2 in self._sleeping_colliders:
+                self._wake_collider(collider2)
             
-            # Call individual collider callbacks
-            collider1.trigger_collision_event(collider2, collision_info)
-            collider2.trigger_collision_event(collider1, collision_info)
+            # Trigger callbacks
+            self._trigger_collision_callbacks(collider1, collider2, collision_info)
             
-            # Resolve collision if neither is a trigger
+            # Resolve collision
             if not collider1.is_trigger and not collider2.is_trigger:
-                self._resolve_collision(collider1, collider2, collision_info)
-    
-    def _should_collide(self, collider1: Collider, collider2: Collider) -> bool:
-        """
-        Check if two colliders should collide based on their layers.
+                self._resolve_enhanced_collision(collider1, collider2, collision_info)
+
+    def _should_process_collision(self, collider1: Collider, collider2: Collider) -> bool:
+        """Enhanced collision filtering."""
+        # Basic checks
+        if collider1.is_static and collider2.is_static:
+            return False
         
-        Args:
-            collider1: First collider
-            collider2: Second collider
-            
-        Returns:
-            True if they should collide, False otherwise
-        """
-        # Simple layer collision - can be extended with collision matrices
+        if (not collider1.game_object or not collider1.game_object.active or
+            not collider2.game_object or not collider2.game_object.active):
+            return False
+        
+        # Layer-based collision matrix (can be extended)
+        return self._check_collision_layers(collider1, collider2)
+
+    def _check_collision_layers(self, collider1: Collider, collider2: Collider) -> bool:
+        """Check if colliders should collide based on layers."""
+        # Default implementation - can be extended with collision matrix
+        layer1 = getattr(collider1, 'collision_layer', 0)
+        layer2 = getattr(collider2, 'collision_layer', 0)
+        
+        # For now, allow all layer collisions
         return True
-    
-    def _resolve_collision(self, collider1: Collider, collider2: Collider, collision_info: Dict[str, Any]):
-        """
-        Resolve collision between two colliders.
+
+    def _get_enhanced_collision_info(self, collider1: Collider, collider2: Collider) -> Optional[Dict[str, Any]]:
+        """Get enhanced collision information."""
+        collision_info = collider1.get_collision_info(collider2)
         
-        Args:
-            collider1: First collider
-            collider2: Second collider
-            collision_info: Collision information
-        """
+        if collision_info and self.enable_continuous_collision:
+            # Add continuous collision detection data
+            collision_info.update(self._get_continuous_collision_info(collider1, collider2))
+        
+        return collision_info
+
+    def _get_continuous_collision_info(self, collider1: Collider, collider2: Collider) -> Dict[str, Any]:
+        """Calculate continuous collision detection information."""
+        continuous_info = {}
+        
+        try:
+            from .rigidbody import Rigidbody
+            rb1 = collider1.game_object.get_component(Rigidbody) if collider1.game_object else None
+            rb2 = collider2.game_object.get_component(Rigidbody) if collider2.game_object else None
+            
+            if rb1 and hasattr(rb1, 'previous_position'):
+                continuous_info['rb1_movement'] = rb1.game_object.transform.position - rb1.previous_position
+            if rb2 and hasattr(rb2, 'previous_position'):
+                continuous_info['rb2_movement'] = rb2.game_object.transform.position - rb2.previous_position
+                
+        except ImportError:
+            pass
+        
+        return continuous_info
+
+    def _resolve_enhanced_collision(self, collider1: Collider, collider2: Collider, collision_info: Dict[str, Any]):
+        """Enhanced collision resolution with improved physics."""
         normal = collision_info.get('normal', Vector2(1, 0))
         penetration = collision_info.get('penetration', 0)
         
-        if penetration <= 0:
+        if penetration <= self.penetration_slop:
             return
         
         # Get rigidbodies
@@ -273,199 +337,297 @@ class PhysicsEngine:
         except ImportError:
             rb1 = rb2 = None
         
-        # Positional correction
-        correction_percent = 0.8  # Percentage of penetration to correct
-        slop = 0.01  # Allowed penetration to prevent jitter
+        # Enhanced positional correction
+        self._resolve_position_correction(collider1, collider2, normal, penetration, rb1, rb2)
         
-        correction_magnitude = max(penetration - slop, 0) * correction_percent
+        # Enhanced velocity resolution
+        if rb1 and rb2:
+            self._resolve_enhanced_velocities(rb1, rb2, normal, collision_info)
+
+    def _resolve_position_correction(self, collider1: Collider, collider2: Collider, 
+                                   normal: Vector2, penetration: float, rb1, rb2):
+        """Enhanced position correction with mass consideration."""
+        correction_magnitude = max(penetration - self.penetration_slop, 0) * self.position_correction_percent
         
         if collider1.is_static and not collider2.is_static:
-            # Only move collider2
+            correction = normal * correction_magnitude
             if collider2.game_object:
-                correction = normal * correction_magnitude
                 collider2.game_object.transform.position += correction
         elif collider2.is_static and not collider1.is_static:
-            # Only move collider1
+            correction = -normal * correction_magnitude
             if collider1.game_object:
-                correction = -normal * correction_magnitude
                 collider1.game_object.transform.position += correction
         elif not collider1.is_static and not collider2.is_static:
-            # Move both objects
-            total_mass = 1.0
+            # Mass-based correction
             if rb1 and rb2:
-                total_mass = rb1.mass + rb2.mass
-                mass1_ratio = rb2.mass / total_mass
-                mass2_ratio = rb1.mass / total_mass
+                total_inv_mass = (1.0 / rb1.mass) + (1.0 / rb2.mass)
+                if total_inv_mass > 0:
+                    correction1 = -normal * correction_magnitude * (1.0 / rb1.mass) / total_inv_mass
+                    correction2 = normal * correction_magnitude * (1.0 / rb2.mass) / total_inv_mass
+                else:
+                    correction1 = correction2 = Vector2.zero()
             else:
-                mass1_ratio = mass2_ratio = 0.5
-            
-            correction1 = -normal * correction_magnitude * mass1_ratio
-            correction2 = normal * correction_magnitude * mass2_ratio
+                correction1 = -normal * correction_magnitude * 0.5
+                correction2 = normal * correction_magnitude * 0.5
             
             if collider1.game_object:
                 collider1.game_object.transform.position += correction1
             if collider2.game_object:
                 collider2.game_object.transform.position += correction2
-        
-        # Velocity resolution
-        if rb1 and rb2 and not rb1.is_kinematic and not rb2.is_kinematic:
-            self._resolve_collision_velocities(rb1, rb2, normal)
-    
-    def _resolve_collision_velocities(self, rb1, rb2, normal: Vector2):
-        """
-        Resolve collision velocities using conservation of momentum.
-        
-        Args:
-            rb1: First rigidbody
-            rb2: Second rigidbody
-            normal: Collision normal (pointing from rb1 to rb2)
-        """
+
+    def _resolve_enhanced_velocities(self, rb1, rb2, normal: Vector2, collision_info: Dict[str, Any]):
+        """Enhanced velocity resolution with improved physics."""
         # Calculate relative velocity
         relative_velocity = rb1.velocity - rb2.velocity
-        
-        # Calculate relative velocity along normal
         velocity_along_normal = relative_velocity.dot(normal)
         
-        # Do not resolve if velocities are separating
+        # Skip if separating
         if velocity_along_normal > 0:
             return
         
-        # Calculate restitution (bounciness)
-        restitution = min(rb1.bounciness, rb2.bounciness)
+        # Enhanced restitution calculation
+        restitution = self._calculate_restitution(rb1, rb2, velocity_along_normal)
         
-        # Calculate impulse scalar
-        impulse_scalar = -(1 + restitution) * velocity_along_normal
-        impulse_scalar /= (1 / rb1.mass) + (1 / rb2.mass)
+        # Calculate impulse with enhanced mass handling
+        inv_mass1 = 1.0 / rb1.mass if rb1.mass > 0 else 0
+        inv_mass2 = 1.0 / rb2.mass if rb2.mass > 0 else 0
+        
+        impulse_scalar = -(1 + restitution) * velocity_along_normal / (inv_mass1 + inv_mass2)
         
         # Apply impulse
         impulse = normal * impulse_scalar
-        rb1.velocity += impulse / rb1.mass
-        rb2.velocity -= impulse / rb2.mass
+        if not rb1.is_kinematic:
+            rb1.velocity += impulse * inv_mass1
+        if not rb2.is_kinematic:
+            rb2.velocity -= impulse * inv_mass2
         
-        # Apply friction
-        self._apply_friction(rb1, rb2, normal, impulse_scalar)
-    
-    def _apply_friction(self, rb1, rb2, normal: Vector2, normal_impulse: float):
-        """
-        Apply friction to the collision.
+        # Enhanced friction
+        self._apply_enhanced_friction(rb1, rb2, normal, impulse_scalar, relative_velocity)
+
+    def _calculate_restitution(self, rb1, rb2, velocity_along_normal: float) -> float:
+        """Calculate restitution with threshold."""
+        base_restitution = min(rb1.bounciness, rb2.bounciness)
         
-        Args:
-            rb1: First rigidbody
-            rb2: Second rigidbody
-            normal: Collision normal
-            normal_impulse: Normal impulse magnitude
-        """
-        # Calculate relative velocity
-        relative_velocity = rb1.velocity - rb2.velocity
+        # Apply restitution threshold
+        if abs(velocity_along_normal) < self.restitution_threshold:
+            return 0.0
         
-        # Calculate tangent vector
+        return base_restitution
+
+    def _apply_enhanced_friction(self, rb1, rb2, normal: Vector2, normal_impulse: float, relative_velocity: Vector2):
+        """Enhanced friction with multiple combination modes."""
+        # Calculate tangent
         tangent = relative_velocity - normal * relative_velocity.dot(normal)
-        if tangent.magnitude() > 0.001:
-            tangent = tangent.normalized()
-        else:
+        if tangent.magnitude() < 0.001:
             return
         
+        tangent = tangent.normalized()
+        
+        # Combine friction coefficients
+        friction = self._combine_friction(rb1.friction, rb2.friction)
+        
         # Calculate friction impulse
-        friction_coefficient = (rb1.friction + rb2.friction) / 2
-        friction_impulse = -relative_velocity.dot(tangent) / ((1 / rb1.mass) + (1 / rb2.mass))
+        inv_mass1 = 1.0 / rb1.mass if rb1.mass > 0 else 0
+        inv_mass2 = 1.0 / rb2.mass if rb2.mass > 0 else 0
         
-        # Clamp friction impulse
-        if abs(friction_impulse) > abs(normal_impulse * friction_coefficient):
-            friction_impulse = normal_impulse * friction_coefficient * (-1 if friction_impulse > 0 else 1)
+        friction_impulse = -relative_velocity.dot(tangent) / (inv_mass1 + inv_mass2)
         
-        # Apply friction impulse
+        # Coulomb friction
+        max_friction = abs(normal_impulse * friction)
+        if abs(friction_impulse) > max_friction:
+            friction_impulse = max_friction * (-1 if friction_impulse > 0 else 1)
+        
+        # Apply friction
         friction_vector = tangent * friction_impulse
-        rb1.velocity += friction_vector / rb1.mass
-        rb2.velocity -= friction_vector / rb2.mass
-    
-    def query_point(self, point: Vector2) -> List[Collider]:
-        """
-        Find all colliders that contain a specific point.
+        if not rb1.is_kinematic:
+            rb1.velocity += friction_vector * inv_mass1
+        if not rb2.is_kinematic:
+            rb2.velocity -= friction_vector * inv_mass2
+
+    def _combine_friction(self, friction1: float, friction2: float) -> float:
+        """Combine friction coefficients using specified mode."""
+        if self.friction_combine_mode == "average":
+            return (friction1 + friction2) / 2
+        elif self.friction_combine_mode == "multiply":
+            return friction1 * friction2
+        elif self.friction_combine_mode == "min":
+            return min(friction1, friction2)
+        elif self.friction_combine_mode == "max":
+            return max(friction1, friction2)
+        else:
+            return (friction1 + friction2) / 2
+
+    def _check_wake_conditions(self):
+        """Check if sleeping colliders should wake up."""
+        for collider in list(self._sleeping_colliders):
+            if self._should_wake_collider(collider):
+                self._wake_collider(collider)
+
+    def _should_wake_collider(self, collider: Collider) -> bool:
+        """Check if a collider should wake up."""
+        try:
+            from .rigidbody import Rigidbody
+            rigidbody = collider.game_object.get_component(Rigidbody) if collider.game_object else None
+            if rigidbody:
+                # Wake if forces are applied
+                if hasattr(rigidbody, 'accumulated_force') and rigidbody.accumulated_force.magnitude() > 0.1:
+                    return True
+                
+                # Wake if velocity is above threshold
+                if rigidbody.velocity.magnitude() > self.sleep_velocity_threshold:
+                    return True
+        except ImportError:
+            pass
         
-        Args:
-            point: Point to query
-            
-        Returns:
-            List of colliders containing the point
-        """
-        result = []
+        return False
+
+    def _wake_collider(self, collider: Collider):
+        """Wake up a sleeping collider."""
+        self._sleeping_colliders.discard(collider)
+        if hasattr(collider, 'sleep_timer'):
+            collider.sleep_timer = 0.0
+            collider.is_sleeping = False
+
+    def _check_sleeping_conditions(self, delta_time: float):
+        """Check which colliders should go to sleep."""
         for collider in self._active_colliders_cache:
-            if collider.contains_point(point):
-                result.append(collider)
-        return result
-    
-    def query_area(self, center: Vector2, radius: float) -> List[Collider]:
-        """
-        Find all colliders within a circular area.
-        
-        Args:
-            center: Center of the query area
-            radius: Radius of the query area
+            if collider in self._sleeping_colliders:
+                continue
             
-        Returns:
-            List of colliders in the area
-        """
-        result = []
-        for collider in self._active_colliders_cache:
-            distance = (collider.get_world_position() - center).magnitude()
-            if distance <= radius + collider.get_bounds_radius():
-                result.append(collider)
-        return result
-    
-    def raycast(self, start: Vector2, direction: Vector2, max_distance: float = float('inf')) -> Optional[Collider]:
-        """
-        Cast a ray and find the first collider it hits.
+            try:
+                from .rigidbody import Rigidbody
+                rigidbody = collider.game_object.get_component(Rigidbody) if collider.game_object else None
+                if rigidbody and not rigidbody.is_kinematic:
+                    if rigidbody.velocity.magnitude() < self.sleep_velocity_threshold:
+                        if not hasattr(collider, 'sleep_timer'):
+                            collider.sleep_timer = 0.0
+                        collider.sleep_timer += delta_time
+                        
+                        if collider.sleep_timer >= self.sleep_time_threshold:
+                            self._put_collider_to_sleep(collider)
+                    else:
+                        if hasattr(collider, 'sleep_timer'):
+                            collider.sleep_timer = 0.0
+            except ImportError:
+                pass
+
+    def _put_collider_to_sleep(self, collider: Collider):
+        """Put a collider to sleep."""
+        self._sleeping_colliders.add(collider)
+        if hasattr(collider, 'is_sleeping'):
+            collider.is_sleeping = True
         
-        Args:
-            start: Ray start position
-            direction: Ray direction (should be normalized)
-            max_distance: Maximum ray distance
-            
-        Returns:
-            First collider hit, or None if no hit
-        """
-        closest_collider = None
+        # Zero out small velocities
+        try:
+            from .rigidbody import Rigidbody
+            rigidbody = collider.game_object.get_component(Rigidbody) if collider.game_object else None
+            if rigidbody:
+                rigidbody.velocity = Vector2.zero()
+                if hasattr(rigidbody, 'angular_velocity'):
+                    rigidbody.angular_velocity = 0.0
+        except ImportError:
+            pass
+
+    def _trigger_collision_callbacks(self, collider1: Collider, collider2: Collider, collision_info: Dict[str, Any]):
+        """Trigger collision callbacks with error handling."""
+        # Global callbacks
+        for callback in self.collision_callbacks:
+            try:
+                callback(collider1, collider2, collision_info)
+            except Exception as e:
+                print(f"Error in collision callback: {e}")
+        
+        # Individual collider callbacks
+        try:
+            collider1.trigger_collision_event(collider2, collision_info)
+            collider2.trigger_collision_event(collider1, collision_info)
+        except Exception as e:
+            print(f"Error in collider callback: {e}")
+
+    # Enhanced query methods
+    def raycast_enhanced(self, start: Vector2, direction: Vector2, max_distance: float = float('inf'), 
+                        layer_mask: int = -1) -> Optional[Dict[str, Any]]:
+        """Enhanced raycast with detailed hit information."""
+        closest_hit = None
         closest_distance = max_distance
         
         for collider in self._active_colliders_cache:
-            # Simple ray-bounds intersection test
-            to_collider = collider.get_world_position() - start
-            projection = to_collider.dot(direction)
+            if layer_mask != -1:
+                collider_layer = getattr(collider, 'collision_layer', 0)
+                if not (layer_mask & (1 << collider_layer)):
+                    continue
             
-            if 0 <= projection <= closest_distance:
-                closest_point = start + direction * projection
-                distance_to_center = (closest_point - collider.get_world_position()).magnitude()
-                
-                if distance_to_center <= collider.get_bounds_radius():
-                    if projection < closest_distance:
-                        closest_distance = projection
-                        closest_collider = collider
+            # Enhanced ray-collider intersection
+            hit_info = self._raycast_collider(start, direction, collider, closest_distance)
+            if hit_info and hit_info['distance'] < closest_distance:
+                closest_distance = hit_info['distance']
+                closest_hit = hit_info
         
-        return closest_collider
-    
-    def get_collision_count(self) -> int:
-        """Get the number of collision checks performed this frame."""
-        return self._collision_checks_this_frame
-    
+        return closest_hit
+
+    def _raycast_collider(self, start: Vector2, direction: Vector2, collider: Collider, max_distance: float) -> Optional[Dict[str, Any]]:
+        """Perform raycast against a single collider."""
+        # Simple implementation - can be enhanced for specific collider types
+        to_collider = collider.get_world_position() - start
+        projection = to_collider.dot(direction)
+        
+        if 0 <= projection <= max_distance:
+            closest_point = start + direction * projection
+            distance_to_center = (closest_point - collider.get_world_position()).magnitude()
+            
+            if distance_to_center <= collider.get_bounds_radius():
+                return {
+                    'collider': collider,
+                    'distance': projection,
+                    'point': closest_point,
+                    'normal': (closest_point - collider.get_world_position()).normalized()
+                }
+        
+        return None
+
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Get detailed performance statistics."""
+        return {
+            'collision_checks': self._collision_checks_this_frame,
+            'active_colliders': len(self._active_colliders_cache),
+            'sleeping_colliders': len(self._sleeping_colliders),
+            'spatial_grid_cells': len(self.spatial_grid),
+            'frame_time_ms': self._frame_time * 1000,
+            'total_colliders': len(self.colliders),
+            'gravity': (self.gravity.x, self.gravity.y),
+            'time_scale': self.time_scale
+        }
+
     def optimize_performance(self):
-        """Optimize physics performance by cleaning up inactive colliders."""
+        """Comprehensive performance optimization."""
+        # Clean up destroyed objects
+        before_count = len(self.colliders)
+        self.colliders = [c for c in self.colliders if c.game_object is not None]
+        removed_count = before_count - len(self.colliders)
+        
+        # Rebuild caches
         self._cache_dirty = True
         self._update_active_colliders_cache()
-    
-    def set_collision_iterations(self, iterations: int):
-        """
-        Set the number of collision resolution iterations per frame.
+        self._rebuild_spatial_grid()
         
-        Args:
-            iterations: Number of iterations (higher = more accurate but slower)
-        """
-        self.collision_iterations = max(1, iterations)
-    
-    def set_spatial_grid_size(self, size: float):
-        """
-        Set the spatial grid size for collision optimization.
+        # Clean up sleeping colliders set
+        self._sleeping_colliders = {c for c in self._sleeping_colliders if c in self.colliders}
         
-        Args:
-            size: Grid cell size in pixels
-        """
-        self.spatial_grid_size = max(32.0, size)
+        if removed_count > 0:
+            print(f"Physics optimization: Removed {removed_count} orphaned colliders")
+
+    def debug_draw_spatial_grid(self, renderer):
+        """Draw spatial grid for debugging."""
+        from ..graphics.renderer import Color
+        
+        for (grid_x, grid_y), colliders in self.spatial_grid.items():
+            if colliders:
+                x = grid_x * self.spatial_grid_size
+                y = grid_y * self.spatial_grid_size
+                
+                renderer.draw_rect(
+                    Vector2(x, y),
+                    Vector2(self.spatial_grid_size, self.spatial_grid_size),
+                    Color.GREEN if len(colliders) == 1 else Color.YELLOW,
+                    filled=False
+                )

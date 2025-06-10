@@ -1,163 +1,64 @@
 
+"""
+VoidRay Serialization Utilities
+Basic serialization helpers for game data persistence.
+"""
+
 import json
+import pickle
 import os
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 
-class SaveSystem:
-    """
-    Simple save/load system for game data.
-    """
+class SerializationUtils:
+    """Basic serialization utilities for game data."""
     
-    def __init__(self, save_directory: str = "saves"):
-        """
-        Initialize the save system.
-        
-        Args:
-            save_directory: Directory to store save files
-        """
-        self.save_directory = save_directory
-        self._ensure_save_directory()
-    
-    def _ensure_save_directory(self):
-        """Ensure save directory exists."""
-        os.makedirs(self.save_directory, exist_ok=True)
-    
-    def save_game(self, slot_name: str, data: Dict[str, Any]) -> bool:
-        """
-        Save game data to a slot.
-        
-        Args:
-            slot_name: Name of the save slot
-            data: Data to save
-            
-        Returns:
-            True if save was successful
-        """
+    @staticmethod
+    def save_json(data: Dict[str, Any], file_path: str) -> bool:
+        """Save data as JSON file."""
         try:
-            filepath = os.path.join(self.save_directory, f"{slot_name}.json")
-            
-            # Add metadata
-            save_data = {
-                'timestamp': None,
-                'version': '1.0',
-                'data': data
-            }
-            
-            # Add timestamp if available
-            try:
-                import time
-                save_data['timestamp'] = time.time()
-            except:
-                pass
-            
-            with open(filepath, 'w') as f:
-                json.dump(save_data, f, indent=2)
-            
-            print(f"Game saved to slot: {slot_name}")
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
             return True
-            
         except Exception as e:
-            print(f"Failed to save game: {e}")
+            print(f"Failed to save JSON to {file_path}: {e}")
             return False
     
-    def load_game(self, slot_name: str) -> Optional[Dict[str, Any]]:
-        """
-        Load game data from a slot.
-        
-        Args:
-            slot_name: Name of the save slot
-            
-        Returns:
-            Loaded data or None if failed
-        """
+    @staticmethod
+    def load_json(file_path: str) -> Optional[Dict[str, Any]]:
+        """Load data from JSON file."""
         try:
-            filepath = os.path.join(self.save_directory, f"{slot_name}.json")
-            
-            if not os.path.exists(filepath):
-                print(f"Save slot '{slot_name}' does not exist")
-                return None
-            
-            with open(filepath, 'r') as f:
-                save_data = json.load(f)
-            
-            print(f"Game loaded from slot: {slot_name}")
-            return save_data.get('data', {})
-            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
         except Exception as e:
-            print(f"Failed to load game: {e}")
+            print(f"Failed to load JSON from {file_path}: {e}")
             return None
     
-    def delete_save(self, slot_name: str) -> bool:
-        """
-        Delete a save slot.
-        
-        Args:
-            slot_name: Name of the save slot
-            
-        Returns:
-            True if deletion was successful
-        """
+    @staticmethod
+    def save_binary(data: Any, file_path: str) -> bool:
+        """Save data as binary file using pickle."""
         try:
-            filepath = os.path.join(self.save_directory, f"{slot_name}.json")
-            
-            if os.path.exists(filepath):
-                os.remove(filepath)
-                print(f"Deleted save slot: {slot_name}")
-                return True
-            else:
-                print(f"Save slot '{slot_name}' does not exist")
-                return False
-                
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'wb') as f:
+                pickle.dump(data, f)
+            return True
         except Exception as e:
-            print(f"Failed to delete save: {e}")
+            print(f"Failed to save binary to {file_path}: {e}")
             return False
     
-    def list_saves(self) -> List[str]:
-        """
-        List all available save slots.
-        
-        Returns:
-            List of save slot names
-        """
+    @staticmethod
+    def load_binary(file_path: str) -> Optional[Any]:
+        """Load data from binary file using pickle."""
         try:
-            saves = []
-            for filename in os.listdir(self.save_directory):
-                if filename.endswith('.json'):
-                    saves.append(filename[:-5])  # Remove .json extension
-            return saves
-        except:
-            return []
-    
-    def get_save_info(self, slot_name: str) -> Optional[Dict[str, Any]]:
-        """
-        Get information about a save slot.
-        
-        Args:
-            slot_name: Name of the save slot
-            
-        Returns:
-            Save information or None if failed
-        """
-        try:
-            filepath = os.path.join(self.save_directory, f"{slot_name}.json")
-            
-            if not os.path.exists(filepath):
-                return None
-            
-            with open(filepath, 'r') as f:
-                save_data = json.load(f)
-            
-            return {
-                'timestamp': save_data.get('timestamp'),
-                'version': save_data.get('version', 'unknown'),
-                'size_bytes': os.path.getsize(filepath)
-            }
-            
+            with open(file_path, 'rb') as f:
+                return pickle.load(f)
         except Exception as e:
-            print(f"Failed to get save info: {e}")
+            print(f"Failed to load binary from {file_path}: {e}")
             return None
 
 
-# Global save system instance
-save_system = SaveSystem()
+# Global save system instance for easy access
+save_system = SerializationUtils()
+    
+    

@@ -114,7 +114,7 @@ def get_scene():
 
 
 # Version info
-__version__ = "2.6.2"
+__version__ = "3.0.0"
 __author__ = "VoidRay Team"
 
 # Main exports
