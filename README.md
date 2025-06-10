@@ -392,6 +392,8 @@ We welcome all types of contributions:
 
 **GNU General Public License v3.0 (GPL-3.0)**
 
+- **[More License & Legal](LICENSE_ENGINE_USE.md)**
+
 ### ✅ **You Can:**
 - Use VoidRay for any purpose (personal, commercial, educational)
 - Study and modify the source code
