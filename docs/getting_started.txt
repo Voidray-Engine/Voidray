@@ -39,26 +39,6 @@ Key Features:
 ⚡ QUICK SETUP (5 MINUTES)
 ========================================
 
-OPTION 1: Replit (Recommended for beginners)
--------------------------------------------
-1. Open this Repl in your browser
-2. Click the "Run" button
-3. The engine automatically installs all dependencies
-4. You're ready to go!
-
-OPTION 2: Local Installation
----------------------------
-Requirements: Python 3.8+ (Python 3.12+ recommended)
-
-1. Download or clone VoidRay:
-   git clone https://github.com/yourusername/voidray-engine.git
-   cd voidray-engine
-
-2. Run the demo:
-   python main.py
-
-3. Dependencies install automatically!
-
 OPTION 3: Visual Editor
 ----------------------
 Launch the advanced code editor:
