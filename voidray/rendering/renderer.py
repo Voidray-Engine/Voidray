@@ -1,6 +1,6 @@
 """
-VoidRay Advanced 2.5D Renderer
-DOOM-style rendering system with texture mapping, raycasting, and advanced visual effects.
+VoidRay 2D Renderer
+rendering system with texture mapping, raycasting, and advanced visual effects.
 """
 
 import pygame
@@ -577,6 +577,54 @@ class Advanced2DRenderer:
             'sectors': len(self.sectors),
             'lights': len(self.light_sources)
         }
+
+    # Standard 2D rendering methods (backward compatibility)
+    def draw_rect(self, position: Vector2, size: Vector2, 
+                  color: Tuple[int, int, int], filled: bool = True):
+        """Draw a rectangle."""
+        screen_pos = self.world_to_screen(position)
+        rect = pygame.Rect(screen_pos.x, screen_pos.y, size.x, size.y)
+
+        if filled:
+            pygame.draw.rect(self.screen, color, rect)
+        else:
+            pygame.draw.rect(self.screen, color, rect, 1)
+
+    def draw_circle(self, center: Vector2, radius: float, 
+                   color: Tuple[int, int, int], filled: bool = True):
+        """Draw a circle."""
+        screen_pos = self.world_to_screen(center)
+
+        if filled:
+            pygame.draw.circle(self.screen, color, (int(screen_pos.x), int(screen_pos.y)), int(radius))
+        else:
+            pygame.draw.circle(self.screen, color, (int(screen_pos.x), int(screen_pos.y)), int(radius), 1)
+
+    def draw_line(self, start: Vector2, end: Vector2, 
+                  color: Tuple[int, int, int], width: int = 1):
+        """Draw a line."""
+        screen_start = self.world_to_screen(start)
+        screen_end = self.world_to_screen(end)
+
+        pygame.draw.line(self.screen, color, 
+                        (screen_start.x, screen_start.y), 
+                        (screen_end.x, screen_end.y), width)
+
+    def draw_text(self, text: str, position: Vector2, 
+                  color: Tuple[int, int, int] = (255, 255, 255), 
+                  font_size: int = 24, font_name: Optional[str] = None):
+        """Draw text."""
+        font = pygame.font.Font(font_name, font_size)
+        text_surface = font.render(text, True, color)
+
+        screen_pos = self.world_to_screen(position)
+        self.screen.blit(text_surface, (screen_pos.x, screen_pos.y))
+
+    def get_text_size(self, text: str, font_size: int = 24, 
+                     font_name: Optional[str] = None) -> Tuple[int, int]:
+        """Get the size of rendered text."""
+        font = pygame.font.Font(font_name, font_size)
+        return font.size(text)
 
 
 # Alias for backward compatibility
