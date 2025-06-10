@@ -36,6 +36,11 @@ class Rigidbody(Component):
         self.is_sleeping = False
         self.sleep_timer = 0.0
 
+        # Position and rotation constraints
+        self.freeze_position_x = False
+        self.freeze_position_y = False
+        self.freeze_rotation = False
+
     def on_attach(self) -> None:
         """Called when attached to a game object."""
         # Register with physics system if available
@@ -60,7 +65,7 @@ class Rigidbody(Component):
             force: The force vector to apply
         """
         if not self.is_kinematic:
-            self._accumulated_force += force
+            self.accumulated_force += force
 
     def add_impulse(self, impulse: Vector2) -> None:
         """
@@ -81,7 +86,7 @@ class Rigidbody(Component):
             torque: The torque to apply (in degrees per second squared)
         """
         if not self.is_kinematic:
-            self._accumulated_torque += torque
+            self.accumulated_torque += torque
 
     def set_velocity(self, velocity: Vector2) -> None:
         """
@@ -105,8 +110,8 @@ class Rigidbody(Component):
         """Stop all motion by setting velocities to zero."""
         self.velocity = Vector2.zero()
         self.angular_velocity = 0.0
-        self._accumulated_force = Vector2.zero()
-        self._accumulated_torque = 0.0
+        self.accumulated_force = Vector2.zero()
+        self.accumulated_torque = 0.0
 
     def set_mass(self, mass: float) -> None:
         """
@@ -184,16 +189,16 @@ class Rigidbody(Component):
             return
 
         # Apply accumulated forces
-        if self._accumulated_force.magnitude() > 0:
-            acceleration = self._accumulated_force / self.mass
+        if self.accumulated_force.magnitude() > 0:
+            acceleration = self.accumulated_force / self.mass
             self.velocity += acceleration * delta_time
-            self._accumulated_force = Vector2.zero()
+            self.accumulated_force = Vector2.zero()
 
         # Apply accumulated torque
-        if self._accumulated_torque != 0 and not self.freeze_rotation:
-            angular_acceleration = self._accumulated_torque / self.mass
+        if self.accumulated_torque != 0 and not self.freeze_rotation:
+            angular_acceleration = self.accumulated_torque / self.mass
             self.angular_velocity += angular_acceleration * delta_time
-            self._accumulated_torque = 0.0
+            self.accumulated_torque = 0.0
 
         # Apply drag
         if self.drag > 0:

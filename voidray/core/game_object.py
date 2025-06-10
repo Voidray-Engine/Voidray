@@ -289,6 +289,15 @@ class GameObject:
         """
         return self.transform.scale
     
+    def get_world_position(self):
+        """
+        Get the world position of this game object.
+        
+        Returns:
+            World position as Vector2
+        """
+        return self.transform.position
+    
     def __str__(self):
         return f"GameObject(name='{self.name}', active={self.active}, components={len(self.components)})"
     
