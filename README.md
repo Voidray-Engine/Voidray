@@ -347,7 +347,7 @@ VoidRay 2.5.4-stable Engine
 
 ## 🌟 VoidRay vs Pygame
 
-| Feature | VoidRay 2.5.4-stable| PyGame |
+| Feature | VoidRay 3| PyGame |
 |---------|---------------------|--------|
 | **Learning Curve** | ✅ Beginner to Pro| ❌ Low-level |
 | **Setup Time** | ✅ Instant | ❌ Manual setup |
@@ -429,7 +429,7 @@ We welcome all types of contributions:
 
 ## 🌟 **Built by Developers, For Developers** 🌟
 
-**VoidRay 2.5.4-stable** - *Where Ideas Become Games*
+**VoidRay 3-stable** - *Where Ideas Become Games*
 
 ---
 
