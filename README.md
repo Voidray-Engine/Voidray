@@ -342,16 +342,16 @@ VoidRay 2.5.4-stable Engine
 
 ## 🌟 VoidRay vs Other Engines
 
-| Feature | VoidRay 2.5.4-stable | Unity 2D | Godot | PyGame |
-|---------|---------------------|-----------|-------|--------|
-| **Learning Curve** | ✅ Beginner to Pro | ❌ Complex | ⚠️ Moderate | ❌ Low-level |
-| **Setup Time** | ✅ Instant | ❌ Hours | ⚠️ Moderate | ❌ Manual setup |
-| **Built-in Physics** | ✅ Professional | ✅ Advanced | ✅ Good | ❌ Basic/None |
-| **Code-First** | ✅ Pure Python | ❌ Visual editor | ⚠️ Mixed | ✅ Code only |
-| **2.5D Support** | ✅ Native | ⚠️ Workarounds | ✅ Good | ❌ Manual |
-| **File Size** | ✅ Lightweight | ❌ Gigabytes | ⚠️ Moderate | ✅ Small |
-| **Free & Open** | ✅ GPL-3.0 | ❌ Limited free | ✅ MIT | ✅ LGPL |
-| **Learning Resources** | ✅ Comprehensive | ✅ Extensive | ✅ Good | ⚠️ Scattered |
+| Feature | VoidRay 2.5.4-stable| PyGame |
+|---------|---------------------|--------|
+| **Learning Curve** | ✅ Beginner to Pro| ❌ Low-level |
+| **Setup Time** | ✅ Instant | ❌ Manual setup |
+| **Built-in Physics** | ✅ Professional | ❌ Basic/None |
+| **Code-First** | ✅ Pure Python | ✅ Code only |
+| **2.5D Support** | ✅ Native | ❌ Manual |
+| **File Size** | ✅ Lightweight | ✅ Small |
+| **Free & Open** | ✅ GPL-3.0 | ✅ LGPL |
+| **Learning Resources** | ✅ Comprehensive | ⚠️ Scattered |
 
 ---
 
