@@ -7,14 +7,14 @@ We actively maintain and provide security updates for the following versions of 
 
 | Version | Supported | Status |
 | ------- | --------- | ------ |
-| 2.5-stable | ✅ | **Current Stable** - Full support |
-| 2.0-stable | ✅ | Legacy support |
+| 3.0-stable | ✅ | **Current Stable** - Full support |
+| 2.X-stable | ✅ | Legacy support |
 | 1.1-stable | ⚠️ | End of life |
 | < x.3.4    | ❌ | Unsupported |
 
 ### 📅 Version Support Timeline
-- **Current Stable (2.5-stable)**: Full security and feature support
-- **Previous Major (2.4.x)**: Security fixes for 6 months after new major release
+- **Current Stable (3.0-stable)**: Full security and feature support
+- **Previous Major (2.X.x)**: Security fixes for 6 months after new major release
 - **Legacy Versions**: No longer supported - please upgrade immediately
 
 ---
