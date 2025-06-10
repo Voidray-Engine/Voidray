@@ -436,14 +436,6 @@ We welcome all types of contributions:
 
 ## 🚀 Get Started Today!
 
-### 📦 **Download Locally:**
-```bash
-git clone https://github.com/yourusername/voidray-engine.git
-cd voidray-engine
-python main.py  # Start with physics demo
-python gui_editor.py  # Launch visual editor
-```
-
 ### 🎯 **Your First Game in 5 Minutes:**
 1. **Run** `python gui_editor.py`
 2. **Select** a template (Platformer, Shooter, Puzzle)
