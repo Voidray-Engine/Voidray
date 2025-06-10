@@ -1,44 +1,45 @@
-# VoidRay Engine Usage License Summary
+# VoidRay Engine – Game Use License Terms
 
-VoidRay Engine itself is licensed under the GNU General Public License v3.0 (GPL-3.0). This means:
+This document outlines the allowed usage of games and projects created using the **VoidRay Engine**, which is licensed under the GNU General Public License v3.0 (GPLv3).
 
-- You must share the source code if you modify the engine.
-- Any distribution of the engine or its modified versions must comply with GPL-3.0 terms.
+## 🔓 What You Can Do
 
----
+If you are creating a game using VoidRay Engine, you are **free to**:
 
-## Your Game Built with VoidRay Engine
+- ✅ **Publish, sell, and distribute** your game commercially or for free.
+- ✅ **License your game however you like**, including closed-source, open-source, freeware, or commercial licenses.
+- ✅ **Use any assets** (graphics, sounds, etc.) you own or have the rights to, even in commercial games.
+- ✅ **Modify the engine** for your own use, as long as engine modifications follow the GPLv3 (see below).
+- ✅ **Keep your game code closed**, as long as you don’t modify or directly include GPL-covered engine source code in your game’s proprietary parts.
 
-Games made using VoidRay Engine **are NOT bound by the GPL-3.0 license** of the engine. This means:
+## ⚠️ Requirements
 
-- You can release your game as closed-source, commercial, free, or open-source — the choice is yours.
-- You are NOT required to disclose your game's source code or any part of it.
-- You may license your game under any terms you prefer.
+To maintain clarity and attribution, the following rules apply:
 
----
+- 📌 You **must credit** the engine with a visible **"Powered by VoidRay Engine"** notice somewhere in your game.  
+  This can be in:
+  - the main menu
+  - a splash screen
+  - the credits
+  - or any other visible place in the game or documentation.
 
-## Attribution Requirement
+- 🔁 If you **modify the engine itself**, or directly use engine code outside its original public interface (e.g., copying internal source into your own closed systems), those parts must remain **open-source under GPLv3**.
 
-The only requirement when distributing your game is to include a clear acknowledgment:
+## ❌ What You Can’t Do
 
-> "Powered by VoidRay Engine"
+- 🚫 You may **not remove or obscure** the required attribution ("Powered by VoidRay Engine").
+- 🚫 You may **not relicense** or redistribute the engine code itself under a different license.
+- 🚫 You may **not claim** that you created the VoidRay Engine.
 
-You can place this text anywhere appropriate, such as:
+## 🤝 Friendly Notes
 
-- Main menu
-- Credits screen
-- Splash screen
-- Game website
+- We welcome both hobby and professional use.
+- There are no royalties or fees.
+- You don't have to share your game's source unless you include or modify GPLv3 parts of the engine.
 
----
+## 📬 Questions?
 
-## Summary
+This license is designed to be fair and developer-friendly. If you’re unsure about anything, feel free to open an issue or contact the maintainers.
 
-- Engine: GPL-3.0, share modifications.
-- Game: fully free to license as you wish.
-- Must credit: "Powered by VoidRay Engine".
-- No royalties, fees, or further restrictions.
-
----
-
-Thank you for using VoidRay Engine. We want you to focus on making great games, not on complex legal stuff.
+Happy coding!  
+– The VoidRay Engine Team
