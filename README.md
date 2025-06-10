@@ -340,7 +340,7 @@ VoidRay 2.5.4-stable Engine
 
 ---
 
-## 🌟 VoidRay vs Other Engines
+## 🌟 VoidRay vs Pygame
 
 | Feature | VoidRay 2.5.4-stable| PyGame |
 |---------|---------------------|--------|
