@@ -321,13 +321,6 @@ python gui_editor.py
 - **[⚡ Advanced Physics Guide](docs/physics_guide.txt)** - Master realistic physics simulation
 - **[🎮 Complete Game Tutorial](docs/tutorial_basic_game.txt)** - Step-by-step professional game development
 
-### 💡 **Working Examples**
-- **[Basic Game](examples/basic_game.py)** - Simple game structure
-- **[Physics Demo](examples/enhanced_demo.py)** - Advanced physics features
-- **[Platformer](examples/platformer_demo.py)** - Complete platformer game
-- **[Space Shooter](examples/space_shooter.py)** - Action game with effects
-- **[Asteroids](examples/asteroids.py)** - Classic arcade remake
-
 ### 🔧 **Development Tools**
 - **Built-in GUI Editor** - Professional code editor with syntax highlighting
 - **Debug Overlay** - Real-time performance monitoring
@@ -413,7 +406,6 @@ We welcome all types of contributions:
 - Fork the repository and create feature branches
 - Follow our coding standards and include tests
 - Submit pull requests with detailed descriptions
-- Check [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 
 ### 📚 **Documentation & Examples**  
 - Improve documentation and tutorials
@@ -465,7 +457,7 @@ python gui_editor.py  # Launch visual editor
 
 ## 🌟 **Built by Developers, For Developers** 🌟
 
-**VoidRay 2.5-stable** - *Where Ideas Become Games*
+**VoidRay 2.5.4-stable** - *Where Ideas Become Games*
 
 ---
 
