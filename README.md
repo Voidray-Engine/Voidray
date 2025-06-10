@@ -286,33 +286,6 @@ if __name__ == "__main__":
 
 ---
 
-## 📦 Installation & Setup
-
-**Requirements**: Python 3.8+ (Recommended: Python 3.12+)
-
-### Quick Start (Replit)
-1. **Fork this Repl** - Everything is pre-configured!
-2. **Click Run** - The engine auto-installs dependencies
-3. **Start Creating** - Use the built-in editor or modify examples
-
-### Local Installation
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/voidray-engine.git
-cd voidray-engine
-
-# Dependencies install automatically when you run
-python main.py
-```
-
-### Using the GUI Editor
-```bash
-# Launch the advanced code editor
-python gui_editor.py
-```
-
----
-
 ## 🎓 Learning Resources & Documentation
 
 ### 📚 **Complete Guides**
