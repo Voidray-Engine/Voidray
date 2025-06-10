@@ -332,7 +332,7 @@ python gui_editor.py
 ## 🏗️ Advanced Engine Architecture
 
 ```
-VoidRay 2.5-stable Engine
+VoidRay 2.5.4-stable Engine
 ├── 🎮 Core Systems
 │   ├── Advanced Scene Management
 │   ├── Component-Based Architecture (ECS)
@@ -369,7 +369,7 @@ VoidRay 2.5-stable Engine
 
 ## 🌟 VoidRay vs Other Engines
 
-| Feature | VoidRay 2.5-stable | Unity 2D | Godot | PyGame |
+| Feature | VoidRay 2.5.4-stable | Unity 2D | Godot | PyGame |
 |---------|---------------------|-----------|-------|--------|
 | **Learning Curve** | ✅ Beginner to Pro | ❌ Complex | ⚠️ Moderate | ❌ Low-level |
 | **Setup Time** | ✅ Instant | ❌ Hours | ⚠️ Moderate | ❌ Manual setup |
@@ -385,7 +385,7 @@ VoidRay 2.5-stable Engine
 ## 🚀 Performance & Optimization
 
 ### ⚡ **Engine Performance**
-- **60+ FPS** stable performance on modern hardware
+- **30/60+ FPS** stable performance on modern hardware
 - **Memory Efficient** - Smart asset loading and garbage collection
 - **Scalable** - Handles 1000+ objects with spatial optimization
 - **Cross-Platform** - Consistent performance across all platforms
