@@ -17,6 +17,7 @@ class EngineLogger:
     def __init__(self, name: str = "VoidRay", level: int = logging.INFO):
         self.logger = logging.getLogger(name)
         self.logger.setLevel(level)
+        self.current_level = level
 
         # Prevent duplicate handlers
         if not self.logger.handlers:
@@ -28,11 +29,15 @@ class EngineLogger:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)
 
-        # File handler
+        # File handler with proper error handling
+        file_handler = None
         try:
-            file_handler = logging.FileHandler('voidray_engine.log')
+            import os
+            os.makedirs('logs', exist_ok=True)
+            file_handler = logging.FileHandler('logs/voidray_engine.log')
             file_handler.setLevel(logging.DEBUG)
-        except:
+        except Exception as e:
+            print(f"Warning: Could not create log file: {e}")
             file_handler = None
 
         # Formatter
@@ -88,6 +93,20 @@ class EngineLogger:
     def physics_optimization(self, removed_count: int):
         """Log physics optimization."""
         self.info(f"Physics optimization: Removed {removed_count} inactive colliders")
+    
+    def set_log_level(self, level: int):
+        """Set the logging level."""
+        self.logger.setLevel(level)
+        self.current_level = level
+        for handler in self.logger.handlers:
+            if isinstance(handler, logging.FileHandler):
+                handler.setLevel(logging.DEBUG)
+            else:
+                handler.setLevel(level)
+    
+    def get_log_level(self) -> int:
+        """Get the current logging level."""
+        return self.current_level
 
 
 # Global logger instance

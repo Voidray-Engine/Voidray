@@ -65,6 +65,10 @@ class VoidRayEngine:
         self.scenes: Dict[str, Scene] = {}
         self.delta_time = 0.0
         
+        # Event system
+        from .event_system import event_system
+        self.event_system = event_system
+        
         # World management for large-scale games
         from .world_manager import WorldManager
         self.world_manager = WorldManager()
@@ -229,6 +233,29 @@ class VoidRayEngine:
         self.resource_manager = ResourceManager(max_memory_mb=1024, enable_streaming=True)
         self.config = EngineConfig()
         
+        # Advanced 2D/2.5D engine features
+        self.particle_systems = []
+        self.animation_manager = None
+        self.shader_manager = None
+        self.post_processing_effects = []
+        self.lighting_system = None
+        self.tilemap_system = None
+        
+        # Game creation tools
+        self.game_templates = {}
+        self.scripting_system = None
+        self.level_streaming = False
+        self.dynamic_batching = True
+        
+        # Enhanced rendering pipeline
+        self.render_layers = {
+            "background": -100,
+            "world": 0,
+            "entities": 100,
+            "effects": 200,
+            "ui": 1000
+        }
+        
         # Initialize profiler callback
         self.profiler.add_report_callback(self._handle_performance_report)
 
@@ -238,6 +265,9 @@ class VoidRayEngine:
         # Debug overlay
         from .debug_overlay import DebugOverlay
         self.debug_overlay = DebugOverlay(self)
+        
+        # Initialize advanced 2D/2.5D systems
+        self._initialize_advanced_systems()
 
         engine_logger.engine_start(self.width, self.height, self.target_fps)
 
@@ -336,6 +366,11 @@ class VoidRayEngine:
                     continue
 
                 try:
+                    # Process game events
+                    event_profile = self.profiler.start_profile("event_processing")
+                    self.event_system.process_events()
+                    self.profiler.end_profile(event_profile)
+
                     # Update current scene
                     update_profile = self.profiler.start_profile("scene_update")
                     if self.current_scene:
@@ -355,6 +390,16 @@ class VoidRayEngine:
                         self.physics_system.update(self.delta_time)
                     self.profiler.end_profile(physics_profile)
                     
+                    # Update advanced systems
+                    advanced_profile = self.profiler.start_profile("advanced_systems")
+                    if hasattr(self, 'particle_system_manager') and self.particle_system_manager is not None:
+                        self.particle_system_manager.update(self.delta_time)
+                    if hasattr(self, 'animation_manager') and self.animation_manager is not None:
+                        self.animation_manager.update(self.delta_time)
+                    if hasattr(self, 'lighting_system') and self.lighting_system is not None:
+                        self.lighting_system.update(self.delta_time)
+                    self.profiler.end_profile(advanced_profile)
+                    
                     # Update world manager
                     world_profile = self.profiler.start_profile("world_update")
                     # Update player position for streaming (would get from player object)
@@ -370,6 +415,13 @@ class VoidRayEngine:
                     render_profile = self.profiler.start_profile("render_frame")
                     self.renderer.clear()
 
+                    # Render tilemap if available
+                    tilemap_profile = self.profiler.start_profile("tilemap_render")
+                    if hasattr(self, 'tilemap_system') and self.tilemap_system is not None:
+                        viewport = pygame.Rect(0, 0, self.width, self.height)
+                        self.tilemap_system.render(self.renderer, viewport)
+                    self.profiler.end_profile(tilemap_profile)
+                    
                     # Render current scene
                     scene_render_profile = self.profiler.start_profile("scene_render")
                     if self.current_scene:
@@ -382,6 +434,12 @@ class VoidRayEngine:
                         text = font.render("No Scene Loaded", True, (255, 255, 255))
                         self.screen.blit(text, (10, 10))
                     self.profiler.end_profile(scene_render_profile)
+                    
+                    # Render particle systems
+                    particles_profile = self.profiler.start_profile("particles_render")
+                    if hasattr(self, 'particle_system_manager') and self.particle_system_manager is not None:
+                        self.particle_system_manager.render(self.renderer)
+                    self.profiler.end_profile(particles_profile)
 
                     # Call user render callback
                     if self.render_callback:
@@ -468,6 +526,14 @@ class VoidRayEngine:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F3:  # F3 to toggle debug overlay
                     self.debug_overlay.toggle()
+                elif event.key == pygame.K_F12:  # F12 to take screenshot
+                    self.take_screenshot()
+                elif event.key == pygame.K_PAUSE or (event.key == pygame.K_p and pygame.key.get_pressed()[pygame.K_LCTRL]):
+                    # Pause/Resume with Pause key or Ctrl+P
+                    if self.state_manager.get_current_state() == EngineState.RUNNING:
+                        self.pause_engine()
+                    elif self.state_manager.get_current_state() == EngineState.PAUSED:
+                        self.resume_engine()
 
             # Pass events to input manager
             self.input_manager.handle_event(event)
@@ -475,6 +541,57 @@ class VoidRayEngine:
         # Update input manager state
         self.input_manager.update()
 
+    def _initialize_advanced_systems(self):
+        """Initialize advanced 2D/2.5D engine systems."""
+        # Initialize systems to None first
+        self.particle_system_manager = None
+        self.animation_manager = None
+        self.tilemap_system = None
+        self.lighting_system = None
+        self.post_processing = None
+        
+        # Try to initialize particle system manager
+        try:
+            from ..effects.particle_system import ParticleSystemManager
+            self.particle_system_manager = ParticleSystemManager()
+            print("Particle system initialized")
+        except ImportError as e:
+            print(f"Particle system not available: {e}")
+            
+        # Try to initialize animation system
+        try:
+            from ..animation.animation_manager import AnimationManager
+            self.animation_manager = AnimationManager()
+            print("Animation system initialized")
+        except ImportError as e:
+            print(f"Animation system not available: {e}")
+            
+        # Try to initialize tilemap system
+        try:
+            from ..tilemap.tilemap_system import TilemapSystem
+            self.tilemap_system = TilemapSystem()
+            print("Tilemap system initialized")
+        except ImportError as e:
+            print(f"Tilemap system not available: {e}")
+            
+        # Try to initialize lighting system for 2.5D
+        try:
+            from ..lighting.lighting_system import LightingSystem
+            self.lighting_system = LightingSystem()
+            print("Lighting system initialized")
+        except ImportError as e:
+            print(f"Lighting system not available: {e}")
+            
+        # Try to initialize post-processing pipeline
+        try:
+            from ..effects.post_processing import PostProcessingPipeline
+            self.post_processing = PostProcessingPipeline(self.screen)
+            print("Post-processing initialized")
+        except ImportError as e:
+            print(f"Post-processing not available: {e}")
+            
+        print("Advanced 2D/2.5D systems initialization complete")
+    
     def _cleanup(self):
         """
         Clean up resources before shutting down.
@@ -542,6 +659,61 @@ class VoidRayEngine:
     def get_scene_object_count(self) -> int:
         """Get the number of objects in the current scene."""
         return len(self.current_scene.objects) if self.current_scene else 0
+
+    def take_screenshot(self, filename: str = None) -> str:
+        """
+        Take a screenshot of the current game window.
+        
+        Args:
+            filename: Optional filename for the screenshot
+            
+        Returns:
+            Path to the saved screenshot
+        """
+        if not filename:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"screenshot_{timestamp}.png"
+        
+        # Ensure screenshots directory exists
+        import os
+        os.makedirs("screenshots", exist_ok=True)
+        filepath = os.path.join("screenshots", filename)
+        
+        # Save the current screen
+        pygame.image.save(self.screen, filepath)
+        print(f"Screenshot saved: {filepath}")
+        return filepath
+
+    def get_memory_usage(self) -> dict:
+        """Get detailed memory usage information."""
+        import psutil
+        import os
+        
+        try:
+            process = psutil.Process(os.getpid())
+            memory_info = process.memory_info()
+            
+            return {
+                'rss_mb': round(memory_info.rss / 1024 / 1024, 2),  # Resident memory
+                'vms_mb': round(memory_info.vms / 1024 / 1024, 2),  # Virtual memory
+                'cpu_percent': process.cpu_percent(),
+                'num_threads': process.num_threads()
+            }
+        except ImportError:
+            return {'error': 'psutil not available for memory monitoring'}
+
+    def pause_engine(self):
+        """Pause the engine execution."""
+        if self.state_manager.get_current_state() == EngineState.RUNNING:
+            self.state_manager.transition_to(EngineState.PAUSED)
+            print("Engine paused")
+
+    def resume_engine(self):
+        """Resume the engine execution."""
+        if self.state_manager.get_current_state() == EngineState.PAUSED:
+            self.state_manager.transition_to(EngineState.RUNNING)
+            print("Engine resumed")
 
     def set_rendering_mode(self, mode: str):
         """
@@ -689,6 +861,110 @@ class VoidRayEngine:
         """Set 2.5D camera position and angle."""
         self.camera_position = position
         self.camera_angle = angle
+    
+    # Game Creation Utilities
+    def create_particle_effect(self, position: Vector2, effect_type: str = "explosion", duration: float = 2.0):
+        """Create a particle effect at the specified position."""
+        if hasattr(self, 'particle_system_manager'):
+            system = self.particle_system_manager.create_system(position, effect_type)
+            
+            if effect_type == "explosion":
+                system.emit_burst(50)
+                system.auto_emit = False
+            
+            # Auto-remove after duration
+            def remove_system():
+                system.active = False
+            
+            # Simple timer (in a full implementation, use a proper timer system)
+            system._removal_timer = duration
+            return system
+        return None
+    
+    def create_tilemap_from_file(self, name: str, filepath: str):
+        """Create a tilemap from a JSON file."""
+        if hasattr(self, 'tilemap_system'):
+            try:
+                import json
+                with open(filepath, 'r') as f:
+                    data = json.load(f)
+                return self.tilemap_system.load_tilemap_from_data(name, data)
+            except Exception as e:
+                print(f"Failed to load tilemap from {filepath}: {e}")
+        return None
+    
+    def create_sprite_animation(self, name: str, sprite_sheet_path: str, 
+                              frame_width: int, frame_height: int, 
+                              frame_count: int, frame_rate: float = 10.0):
+        """Create a sprite animation from a sprite sheet."""
+        if hasattr(self, 'animation_manager'):
+            try:
+                sprite_sheet = pygame.image.load(sprite_sheet_path)
+                self.animation_manager.load_sprite_sheet(name + "_sheet", sprite_sheet)
+                
+                frame_duration = 1.0 / frame_rate
+                return self.animation_manager.create_sprite_animation(
+                    name, name + "_sheet", frame_width, frame_height,
+                    frame_count, frame_duration
+                )
+            except Exception as e:
+                print(f"Failed to create sprite animation: {e}")
+        return None
+    
+    def quick_setup_platformer(self, player_start: Vector2, level_data: dict = None):
+        """Quick setup for a platformer game."""
+        # Set up physics for platformer
+        self.physics_engine.set_gravity(980)  # Standard gravity
+        
+        # Create tilemap if level data provided
+        if level_data and hasattr(self, 'tilemap_system'):
+            tilemap = self.tilemap_system.load_tilemap_from_data("main_level", level_data)
+            self.tilemap_system.set_active_tilemap("main_level")
+        
+        # Set rendering mode
+        self.set_rendering_mode("2D")
+        
+        print("Platformer setup complete!")
+        return True
+        
+    def quick_setup_top_down(self, enable_lighting: bool = True):
+        """Quick setup for a top-down game."""
+        # Disable gravity for top-down
+        self.physics_engine.set_gravity(0)
+        
+        # Set rendering mode
+        if enable_lighting:
+            self.set_rendering_mode("2.5D")
+        else:
+            self.set_rendering_mode("2D")
+            
+        print("Top-down game setup complete!")
+        return True
+        
+    def add_simple_enemy_ai(self, enemy_object, target_object, speed: float = 100.0):
+        """Add simple AI that follows a target."""
+        def ai_update(delta_time):
+            if not enemy_object.active or not target_object.active:
+                return
+                
+            # Simple follow AI
+            direction = target_object.transform.position - enemy_object.transform.position
+            if direction.magnitude() > 50:  # Don't get too close
+                direction = direction.normalized()
+                enemy_object.transform.position += direction * speed * delta_time
+        
+        # In a real implementation, this would be a proper component
+        if not hasattr(enemy_object, '_ai_update'):
+            enemy_object._ai_update = ai_update
+            enemy_object._original_update = enemy_object.update
+            
+            def combined_update(delta_time):
+                enemy_object._original_update(delta_time)
+                enemy_object._ai_update(delta_time)
+            
+            enemy_object.update = combined_update
+        
+        return True
 
 
 # Global engine instance

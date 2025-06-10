@@ -36,6 +36,11 @@ from .audio.audio_manager import AudioManager
 # Utilities
 from .utils.color import Color as UtilColor
 from .utils.time import Time
+from .utils.save_system import save_system
+
+# Core systems
+from .core.event_system import event_system, EventType, GameEvent
+from .core.scene_transitions import SceneTransition, TransitionType
 
 # Global engine instance
 _engine = None
@@ -109,7 +114,7 @@ def get_scene():
 
 
 # Version info
-__version__ = "2.5.4"
+__version__ = "2.6.2"
 __author__ = "VoidRay Team"
 
 # Main exports
@@ -149,6 +154,14 @@ __all__ = [
     # Utilities
     'UtilColor',
     'Time',
+    'save_system',
+
+    # Core systems
+    'event_system',
+    'EventType',
+    'GameEvent',
+    'SceneTransition',
+    'TransitionType',
 
     # Engine functions
     'configure',

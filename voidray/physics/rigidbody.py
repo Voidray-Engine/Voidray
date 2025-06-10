@@ -1,4 +1,3 @@
-
 """
 VoidRay Rigidbody
 
@@ -16,26 +15,26 @@ class Rigidbody(Component):
     and behavior in the physics simulation.
     """
 
-    def __init__(self, mass: float = 1.0, is_kinematic: bool = False):
+    def __init__(self, mass: float = 1.0, drag: float = 0.0, angular_drag: float = 0.0):
+        """Initialize the rigidbody component."""
         super().__init__()
-        self.mass = max(0.01, mass)  # Prevent zero or negative mass
+        self.mass = max(0.1, mass)  # Prevent zero or negative mass
         self.velocity = Vector2(0, 0)
-        self.force = Vector2(0, 0)
-        self.is_kinematic = is_kinematic
-        self.use_gravity = True
-        self.drag = 0.0
-        self.angular_drag = 0.05
-        self.bounciness = 0.0
-        self.friction = 0.5
         self.angular_velocity = 0.0
+        self.drag = max(0.0, drag)
+        self.angular_drag = max(0.0, angular_drag)
+        self.use_gravity = True
+        self.is_kinematic = False
+        self.accumulated_force = Vector2(0, 0)
+        self.accumulated_torque = 0.0
+
+        # Physics material properties
+        self.bounciness = 0.0  # Restitution coefficient
+        self.friction = 0.5   # Friction coefficient
+
+        # Sleeping system
+        self.is_sleeping = False
         self.sleep_timer = 0.0
-        self.freeze_position_x = False
-        self.freeze_position_y = False
-        self.freeze_rotation = False
-        
-        # Internal physics state
-        self._accumulated_force = Vector2(0, 0)
-        self._accumulated_torque = 0.0
 
     def on_attach(self) -> None:
         """Called when attached to a game object."""
@@ -177,41 +176,41 @@ class Rigidbody(Component):
     def update(self, delta_time: float) -> None:
         """
         Update the rigidbody physics simulation.
-        
+
         Args:
             delta_time: Time elapsed since last frame
         """
         if self.is_kinematic or not self.game_object:
             return
-        
+
         # Apply accumulated forces
         if self._accumulated_force.magnitude() > 0:
             acceleration = self._accumulated_force / self.mass
             self.velocity += acceleration * delta_time
             self._accumulated_force = Vector2.zero()
-        
+
         # Apply accumulated torque
         if self._accumulated_torque != 0 and not self.freeze_rotation:
             angular_acceleration = self._accumulated_torque / self.mass
             self.angular_velocity += angular_acceleration * delta_time
             self._accumulated_torque = 0.0
-        
+
         # Apply drag
         if self.drag > 0:
             drag_factor = max(0, 1 - self.drag * delta_time)
             self.velocity *= drag_factor
-        
+
         # Apply angular drag
         if self.angular_drag > 0:
             angular_drag_factor = max(0, 1 - self.angular_drag * delta_time)
             self.angular_velocity *= angular_drag_factor
-        
+
         # Update position
         if not self.freeze_position_x:
             self.game_object.transform.position.x += self.velocity.x * delta_time
         if not self.freeze_position_y:
             self.game_object.transform.position.y += self.velocity.y * delta_time
-        
+
         # Update rotation
         if not self.freeze_rotation:
             self.game_object.transform.rotation += self.angular_velocity * delta_time
