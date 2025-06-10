@@ -42,4 +42,4 @@ To maintain clarity and attribution, the following rules apply:
 This license is designed to be fair and developer-friendly. If you’re unsure about anything, feel free to open an issue or contact the maintainers.
 
 Happy coding!  
-– The VoidRay Engine Team
+– The VoidRay Team
