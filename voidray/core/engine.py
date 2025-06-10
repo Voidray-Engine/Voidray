@@ -241,6 +241,10 @@ class VoidRayEngine:
         self.lighting_system = None
         self.tilemap_system = None
         
+        # Scripting and UI systems
+        self.script_manager = None
+        self.ui_manager = None
+        
         # Game creation tools
         self.game_templates = {}
         self.scripting_system = None
@@ -270,6 +274,16 @@ class VoidRayEngine:
         self._initialize_advanced_systems()
 
         engine_logger.engine_start(self.width, self.height, self.target_fps)
+        
+        # Validate engine systems
+        try:
+            from .engine_validator import validate_engine
+            if not validate_engine(self):
+                print("⚠️ Engine validation found issues, but continuing...")
+            else:
+                print("✅ Engine validation passed - all systems healthy")
+        except ImportError:
+            print("Engine validator not available")
 
         # Call user initialization
         if self.init_callback:
@@ -335,9 +349,9 @@ class VoidRayEngine:
                 self.profiler.start_frame()
                 profile_id = self.profiler.start_profile("main_loop")
                 
-                # Calculate delta time
+                # Calculate delta time with frame limiting
                 dt = self.clock.tick(self.target_fps)
-                self.delta_time = dt / 1000.0  # Convert to seconds
+                self.delta_time = min(dt / 1000.0, 0.05)  # Cap at 50ms to prevent spiral of death
 
             # Performance monitoring and statistics
                 frame_count += 1
@@ -358,6 +372,18 @@ class VoidRayEngine:
 
                 # Handle input events
                 self._handle_events()
+                
+                # Update scripting system
+                if self.script_manager:
+                    script_profile = self.profiler.start_profile("script_update")
+                    self.script_manager.update(self.delta_time)
+                    self.profiler.end_profile(script_profile)
+                
+                # Update UI system
+                if self.ui_manager:
+                    ui_profile = self.profiler.start_profile("ui_update")
+                    self.ui_manager.update(self.delta_time)
+                    self.profiler.end_profile(ui_profile)
                 
                 # Debug: Check scene status
                 if not self.current_scene:
@@ -447,11 +473,24 @@ class VoidRayEngine:
                         self.render_callback()
                         self.profiler.end_profile(callback_render_profile)
 
-                    # Debug overlay completely disabled
-                    # if hasattr(self, 'debug_overlay') and self.debug_overlay.visible:
-                    #     debug_profile = self.profiler.start_profile("debug_overlay")
-                    #     self.debug_overlay.render(self.renderer)
-                    #     self.profiler.end_profile(debug_profile)
+                    # Render UI system (always on top)
+                    if self.ui_manager:
+                        ui_render_profile = self.profiler.start_profile("ui_render")
+                        self.ui_manager.render(self.renderer)
+                        self.profiler.end_profile(ui_render_profile)
+                    
+                    # Debug overlay (only if explicitly enabled and working)
+                    if (hasattr(self, 'debug_overlay') and 
+                        self.debug_overlay.visible and 
+                        self.debug_overlay.debug_render_enabled):
+                        try:
+                            debug_profile = self.profiler.start_profile("debug_overlay")
+                            self.debug_overlay.render(self.renderer)
+                            self.profiler.end_profile(debug_profile)
+                        except Exception as e:
+                            # Disable debug overlay on error
+                            self.debug_overlay.visible = False
+                            print(f"Debug overlay disabled due to error: {e}")
 
                     # Ensure the display is updated
                     present_profile = self.profiler.start_profile("present")
@@ -535,6 +574,10 @@ class VoidRayEngine:
                     elif self.state_manager.get_current_state() == EngineState.PAUSED:
                         self.resume_engine()
 
+            # Pass events to UI manager first
+            if self.ui_manager:
+                self.ui_manager.handle_event(event)
+            
             # Pass events to input manager
             self.input_manager.handle_event(event)
 
@@ -555,16 +598,18 @@ class VoidRayEngine:
             from ..effects.particle_system import ParticleSystemManager
             self.particle_system_manager = ParticleSystemManager()
             print("Particle system initialized")
-        except ImportError as e:
+        except (ImportError, AttributeError) as e:
             print(f"Particle system not available: {e}")
+            self.particle_system_manager = None
             
         # Try to initialize animation system
         try:
             from ..animation.animation_manager import AnimationManager
             self.animation_manager = AnimationManager()
             print("Animation system initialized")
-        except ImportError as e:
+        except (ImportError, AttributeError) as e:
             print(f"Animation system not available: {e}")
+            self.animation_manager = None
             
         # Try to initialize tilemap system
         try:
@@ -589,6 +634,24 @@ class VoidRayEngine:
             print("Post-processing initialized")
         except ImportError as e:
             print(f"Post-processing not available: {e}")
+        
+        # Initialize scripting system
+        try:
+            from ..scripting.script_manager import ScriptManager
+            self.script_manager = ScriptManager()
+            print("Scripting system initialized")
+        except ImportError as e:
+            print(f"Scripting system not available: {e}")
+            self.script_manager = None
+        
+        # Initialize UI system
+        try:
+            from ..ui.ui_manager import UIManager
+            self.ui_manager = UIManager()
+            print("UI system initialized")
+        except ImportError as e:
+            print(f"UI system not available: {e}")
+            self.ui_manager = None
             
         print("Advanced 2D/2.5D systems initialization complete")
     
@@ -596,23 +659,61 @@ class VoidRayEngine:
         """
         Clean up resources before shutting down.
         """
-        if self.current_scene:
-            self.current_scene.on_exit()
+        try:
+            if self.current_scene:
+                self.current_scene.on_exit()
 
-        # Generate final performance report
-        if hasattr(self, 'profiler'):
-            self.profiler.save_report("logs/final_performance_report.json")
-            
-        # Clean up enhanced systems
-        if hasattr(self, 'world_manager'):
-            self.world_manager.unload_level()
-            
-        if hasattr(self, 'resource_manager'):
-            self.resource_manager.cleanup()
+            # Generate final performance report
+            if hasattr(self, 'profiler') and self.profiler:
+                try:
+                    self.profiler.save_report("logs/final_performance_report.json")
+                except Exception as e:
+                    print(f"Could not save performance report: {e}")
+                
+            # Clean up enhanced systems
+            if hasattr(self, 'world_manager') and self.world_manager:
+                try:
+                    self.world_manager.unload_level()
+                except Exception as e:
+                    print(f"Error cleaning up world manager: {e}")
+                
+            if hasattr(self, 'resource_manager') and self.resource_manager:
+                try:
+                    self.resource_manager.cleanup()
+                except Exception as e:
+                    print(f"Error cleaning up resource manager: {e}")
 
-        self.audio_manager.cleanup()
-        pygame.quit()
-        sys.exit()
+            # Clean up particle systems
+            if hasattr(self, 'particle_system_manager') and self.particle_system_manager:
+                try:
+                    self.particle_system_manager.clear_all_systems()
+                except Exception as e:
+                    print(f"Error cleaning up particle systems: {e}")
+
+            # Clean up audio
+            if hasattr(self, 'audio_manager') and self.audio_manager:
+                try:
+                    self.audio_manager.cleanup()
+                except Exception as e:
+                    print(f"Error cleaning up audio: {e}")
+
+            # Clean up renderer
+            if hasattr(self, 'renderer') and self.renderer:
+                try:
+                    if hasattr(self.renderer, 'cleanup'):
+                        self.renderer.cleanup()
+                except Exception as e:
+                    print(f"Error cleaning up renderer: {e}")
+
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+        finally:
+            try:
+                pygame.quit()
+            except Exception:
+                pass  # Ignore pygame quit errors
+            
+            # Don't call sys.exit() - let the program end naturally
     
     def _handle_performance_report(self, report: Dict[str, Any]):
         """Handle performance reports for optimization."""
