@@ -353,6 +353,41 @@ class Advanced2DRenderer:
 
         if distance > self.render_distance:
             return
+        
+        # Batch rendering optimization
+        if not hasattr(self, '_sprite_batch'):
+            self._sprite_batch = []
+        
+        self._sprite_batch.append({
+            'pos': sprite_pos,
+            'texture': sprite_texture,
+            'distance': distance,
+            'scale': scale,
+            'camera_pos': camera_pos,
+            'camera_angle': camera_angle
+        })
+    
+    def flush_sprite_batch(self):
+        """Render all batched sprites sorted by distance."""
+        if not hasattr(self, '_sprite_batch') or not self._sprite_batch:
+            return
+        
+        # Sort by distance for proper depth rendering
+        self._sprite_batch.sort(key=lambda s: s['distance'], reverse=True)
+        
+        for sprite_data in self._sprite_batch:
+            self._render_single_sprite_2_5d(sprite_data)
+        
+        self._sprite_batch.clear()
+    
+    def _render_single_sprite_2_5d(self, sprite_data):
+        """Internal method to render a single sprite."""
+        sprite_pos = sprite_data['pos']
+        sprite_texture = sprite_data['texture']
+        camera_pos = sprite_data['camera_pos']
+        camera_angle = sprite_data['camera_angle']
+        scale = sprite_data['scale']
+        distance = sprite_data['distance']
 
         # Transform to camera space
         cos_angle = math.cos(camera_angle)

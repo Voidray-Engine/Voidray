@@ -566,22 +566,128 @@ class PhysicsEngine:
         return closest_hit
 
     def _raycast_collider(self, start: Vector2, direction: Vector2, collider: Collider, max_distance: float) -> Optional[Dict[str, Any]]:
-        """Perform raycast against a single collider."""
-        # Simple implementation - can be enhanced for specific collider types
-        to_collider = collider.get_world_position() - start
-        projection = to_collider.dot(direction)
+        """Perform raycast against a single collider with proper shape detection."""
+        # Enhanced raycast for different collider types
+        from .collision import BoxCollider, CircleCollider
         
-        if 0 <= projection <= max_distance:
-            closest_point = start + direction * projection
-            distance_to_center = (closest_point - collider.get_world_position()).magnitude()
+        if isinstance(collider, CircleCollider):
+            return self._raycast_circle(start, direction, collider, max_distance)
+        elif isinstance(collider, BoxCollider):
+            return self._raycast_box(start, direction, collider, max_distance)
+        else:
+            # Fallback to simple sphere test
+            to_collider = collider.get_world_position() - start
+            projection = to_collider.dot(direction)
             
-            if distance_to_center <= collider.get_bounds_radius():
+            if 0 <= projection <= max_distance:
+                closest_point = start + direction * projection
+                distance_to_center = (closest_point - collider.get_world_position()).magnitude()
+                
+                if distance_to_center <= collider.get_bounds_radius():
+                    return {
+                        'collider': collider,
+                        'distance': projection,
+                        'point': closest_point,
+                        'normal': (closest_point - collider.get_world_position()).normalized()
+                    }
+            
+            return None
+    
+    def _raycast_circle(self, start: Vector2, direction: Vector2, collider, max_distance: float) -> Optional[Dict[str, Any]]:
+        """Raycast against a circle collider."""
+        center = collider.get_world_position()
+        radius = collider.radius
+        
+        # Ray-circle intersection
+        to_center = center - start
+        projection = to_center.dot(direction)
+        
+        if projection < 0:
+            return None
+        
+        closest_point = start + direction * projection
+        distance_to_center = (closest_point - center).magnitude()
+        
+        if distance_to_center <= radius:
+            # Calculate actual intersection point
+            offset = (radius * radius - distance_to_center * distance_to_center) ** 0.5
+            hit_distance = projection - offset
+            
+            if 0 <= hit_distance <= max_distance:
+                hit_point = start + direction * hit_distance
+                normal = (hit_point - center).normalized()
+                
                 return {
                     'collider': collider,
-                    'distance': projection,
-                    'point': closest_point,
-                    'normal': (closest_point - collider.get_world_position()).normalized()
+                    'distance': hit_distance,
+                    'point': hit_point,
+                    'normal': normal
                 }
+        
+        return None
+    
+    def _raycast_box(self, start: Vector2, direction: Vector2, collider, max_distance: float) -> Optional[Dict[str, Any]]:
+        """Raycast against a box collider."""
+        center = collider.get_world_position()
+        half_size = Vector2(collider.width / 2, collider.height / 2)
+        
+        # AABB ray intersection
+        min_point = center - half_size
+        max_point = center + half_size
+        
+        t_min = 0
+        t_max = max_distance
+        
+        # Check X slab
+        if abs(direction.x) < 1e-8:
+            if start.x < min_point.x or start.x > max_point.x:
+                return None
+        else:
+            t1 = (min_point.x - start.x) / direction.x
+            t2 = (max_point.x - start.x) / direction.x
+            
+            if t1 > t2:
+                t1, t2 = t2, t1
+            
+            t_min = max(t_min, t1)
+            t_max = min(t_max, t2)
+            
+            if t_min > t_max:
+                return None
+        
+        # Check Y slab
+        if abs(direction.y) < 1e-8:
+            if start.y < min_point.y or start.y > max_point.y:
+                return None
+        else:
+            t1 = (min_point.y - start.y) / direction.y
+            t2 = (max_point.y - start.y) / direction.y
+            
+            if t1 > t2:
+                t1, t2 = t2, t1
+            
+            t_min = max(t_min, t1)
+            t_max = min(t_max, t2)
+            
+            if t_min > t_max:
+                return None
+        
+        if t_min >= 0:
+            hit_point = start + direction * t_min
+            # Calculate normal based on which face was hit
+            diff = hit_point - center
+            
+            if abs(diff.x) > abs(diff.y):
+                normal = Vector2(1 if diff.x > 0 else -1, 0)
+            else:
+                normal = Vector2(0, 1 if diff.y > 0 else -1)
+            
+            return {
+                'collider': collider,
+                'distance': t_min,
+                'point': hit_point,
+                'normal': normal
+            }
         
         return None
 

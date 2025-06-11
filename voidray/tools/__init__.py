@@ -5,7 +5,6 @@ Tools and utilities for game development.
 """
 
 from .level_editor import LevelEditor
-from .asset_browser import AssetBrowser
-from .scene_inspector import SceneInspector
+from .performance_monitor import PerformanceMonitor
 
-__all__ = ['LevelEditor', 'AssetBrowser', 'SceneInspector']
+__all__ = ['LevelEditor', 'PerformanceMonitor']

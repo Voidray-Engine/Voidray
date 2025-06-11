@@ -272,6 +272,28 @@ class VoidRayEngine:
         
         # Initialize advanced 2D/2.5D systems
         self._initialize_advanced_systems()
+        
+        # Initialize performance monitoring
+        from ..tools.performance_monitor import PerformanceMonitor
+        self.performance_monitor = PerformanceMonitor(self)
+        
+        # Initialize shader manager
+        try:
+            from ..rendering.shader_manager import ShaderManager
+            self.shader_manager = ShaderManager()
+            # Enable retro mode for pixel-perfect 2D games
+            self.shader_manager.set_retro_mode(True, 1)
+            print("Shader manager initialized with retro mode")
+        except ImportError:
+            self.shader_manager = None
+            
+        # Initialize spatial audio
+        try:
+            from ..audio.spatial_audio import SpatialAudioManager
+            self.spatial_audio = SpatialAudioManager()
+            print("Spatial audio system initialized")
+        except ImportError:
+            self.spatial_audio = None
 
         engine_logger.engine_start(self.width, self.height, self.target_fps)
         
@@ -424,6 +446,18 @@ class VoidRayEngine:
                         self.animation_manager.update(self.delta_time)
                     if hasattr(self, 'lighting_system') and self.lighting_system is not None:
                         self.lighting_system.update(self.delta_time)
+                    
+                    # Update performance monitoring
+                    if hasattr(self, 'performance_monitor'):
+                        self.performance_monitor.update(self.delta_time)
+                        
+                    # Update spatial audio
+                    if hasattr(self, 'spatial_audio') and self.spatial_audio:
+                        # Update listener position based on camera
+                        if hasattr(self, 'camera') and self.camera:
+                            self.spatial_audio.set_listener_position(self.camera.transform.position)
+                        self.spatial_audio.update(self.delta_time)
+                        
                     self.profiler.end_profile(advanced_profile)
                     
                     # Update world manager
@@ -492,8 +526,20 @@ class VoidRayEngine:
                             self.debug_overlay.visible = False
                             print(f"Debug overlay disabled due to error: {e}")
 
+                    # Apply post-processing shaders
+                    if hasattr(self, 'shader_manager') and self.shader_manager:
+                        # Process the final frame through shader pipeline
+                        # Note: This would require additional surface management
+                        pass
+                    
+                    # Render performance overlay
+                    if hasattr(self, 'performance_monitor'):
+                        self.performance_monitor.render_overlay(self.renderer)
+                    
                     # Ensure the display is updated
                     present_profile = self.profiler.start_profile("present")
+                    if hasattr(self, 'renderer') and hasattr(self.renderer, 'flush_sprite_batch'):
+                        self.renderer.flush_sprite_batch()
                     self.renderer.present()
                     self.profiler.end_profile(present_profile)
                     
