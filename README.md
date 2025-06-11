@@ -359,7 +359,7 @@ VoidRay 2.5.4-stable Engine
 | **Input System**             | ✅ Unified & frame-perfect                | ❌ Manual polling         |
 | **Audio System**             | ✅ 3D audio, streaming                    | ⚠️ Basic sound mixer     |
 | **Asset Management**         | ✅ Automatic loading & caching            | ❌ Manual file handling   |
-| **Visual Tools**             | ✅ Integrated editor & debugger           | ❌ None                   |
+| **Visual Tools**             | ✅ Integrated debugger                    | ❌ None                   |
 | **Performance Optimization** | ✅ Spatial partitioning, ECS              | ❌ Manual optimization    |
 | **Documentation**            | ✅ Structured & full examples             | ⚠️ Scattered or outdated |
 | **Cross-Platform**           | ✅ Windows / Linux / macOS                | ✅ Same                   |
