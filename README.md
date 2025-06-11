@@ -347,16 +347,31 @@ VoidRay 2.5.4-stable Engine
 
 ## 🌟 VoidRay vs Pygame
 
-| Feature | VoidRay 3| PyGame |
-|---------|---------------------|--------|
-| **Learning Curve** | ✅ Beginner to Pro| ❌ Low-level |
-| **Setup Time** | ✅ Instant | ❌ Manual setup |
-| **Built-in Physics** | ✅ Professional | ❌ Basic/None |
-| **Code-First** | ✅ Pure Python | ✅ Code only |
-| **2.5D Support** | ✅ Native | ❌ Manual |
-| **File Size** | ✅ Lightweight | ✅ Small |
-| **Free & Open** | ✅ GPL-3.0 | ✅ LGPL |
-| **Learning Resources** | ✅ Comprehensive | ⚠️ Scattered |
+| **Feature**                  | **VoidRay 3**                            | **PyGame**               |
+| ---------------------------- | ---------------------------------------- | ------------------------ |
+| **Learning Curve**           | ✅ Beginner to Pro                        | ❌ Low-level              |
+| **Setup Time**               | ✅ Instant (no boilerplate)               | ❌ Manual setup           |
+| **Built-in Physics**         | ✅ Professional (rigidbodies, collisions) | ❌ Basic/None             |
+| **Code-First**               | ✅ Pure Python                            | ✅ Code only              |
+| **2.5D Support**             | ✅ Native, layered rendering              | ❌ Manual (pseudo only)   |
+| **Rendering Pipeline**       | ✅ Batching, culling, postFX              | ❌ Basic blitting         |
+| **Scene Management**         | ✅ Built-in, modular                      | ❌ Manual implementation  |
+| **Input System**             | ✅ Unified & frame-perfect                | ❌ Manual polling         |
+| **Audio System**             | ✅ 3D audio, streaming                    | ⚠️ Basic sound mixer     |
+| **Asset Management**         | ✅ Automatic loading & caching            | ❌ Manual file handling   |
+| **Visual Tools**             | ✅ Integrated editor & debugger           | ❌ None                   |
+| **Performance Optimization** | ✅ Spatial partitioning, ECS              | ❌ Manual optimization    |
+| **Documentation**            | ✅ Structured & full examples             | ⚠️ Scattered or outdated |
+| **Cross-Platform**           | ✅ Windows / Linux / macOS                | ✅ Same                   |
+| **Modularity**               | ✅ ECS + plug & play systems              | ❌ Monolithic design      |
+| **Scripting/API Design**     | ✅ Clean, modern Python API               | ⚠️ C-style API feel      |
+| **UI Support**               | ✅ Built-in UI system                     | ❌ External or DIY        |
+| **Shader Support**           | ⚡ Planned / Experimental                 | ❌ Not supported          |
+| **License**                  | ✅ GPL-3.0                                | ✅ LGPL                   |
+| **Community / Ecosystem**    | ⚠️ Growing                               | ✅ Established            |
+| **File Size**                | ✅ Lightweight                            | ✅ Small                  |
+| **Game Types**               | 🎮 Arcades, Platformers, RPGs, etc.      | 🎮 Mostly 2D prototyping |
+
 
 ---
 
