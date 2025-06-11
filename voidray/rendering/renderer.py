@@ -78,10 +78,34 @@ class Advanced2DRenderer:
         self.frustum_culling_enabled = True
         self.culling_margin = 100  # Extra pixels around screen for culling
         
-        # Improved batching
-        self.max_batch_size = 2000
+        # Advanced GPU-style batching system
+        self.max_batch_size = 5000  # Increased for better performance
         self.texture_batches = {}
         self.geometry_batch = []
+        self.instanced_rendering = True
+        
+        # Advanced multi-layer batching
+        self.layer_batches = {
+            'background': [],
+            'world': [],
+            'entities': [],
+            'effects': [],
+            'ui': []
+        }
+        
+        # Performance optimization features
+        self.auto_batching = True
+        self.dynamic_culling = True
+        self.level_of_detail = True
+        self.occlusion_culling = False
+        
+        # Memory-mapped rendering surfaces for ultra-fast blitting
+        self.render_surfaces = {}
+        self.surface_pool = []
+        
+        # Concurrent rendering pipeline
+        self.parallel_rendering = True
+        self.render_threads = 4
 
         # 2.5D rendering properties
         self.camera_height = 32.0

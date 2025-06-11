@@ -273,6 +273,20 @@ class VoidRayEngine:
         # Initialize advanced 2D/2.5D systems
         self._initialize_advanced_systems()
 
+        # Initialize advanced asset streaming
+        from .asset_streaming import AssetStreamingSystem
+        self.asset_streaming = AssetStreamingSystem(max_memory_mb=1024)
+        self.asset_streaming.start_background_loading()
+        
+        # Initialize advanced quadtree system
+        from ..physics.quadtree import AdvancedQuadTree
+        world_size = 20000  # Large world support
+        self.spatial_quadtree = AdvancedQuadTree(
+            (-world_size, -world_size, world_size * 2, world_size * 2),
+            max_objects=15,
+            max_depth=10
+        )
+
         # Initialize performance monitoring
         from ..tools.performance_monitor import PerformanceMonitor
         self.performance_monitor = PerformanceMonitor(self)

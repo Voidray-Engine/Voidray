@@ -124,6 +124,9 @@ class PerformanceMonitor:
         self.enabled = True
         self.show_overlay = False
 
+        # Initialize metrics
+        self.metrics = PerformanceMetrics()
+
         # Performance metrics
         self.fps_history = []
         self.memory_history = []

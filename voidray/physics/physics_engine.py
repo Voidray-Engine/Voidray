@@ -62,6 +62,20 @@ class PhysicsEngine:
         self._cache_dirty = True
         self._frame_time = 0.0
         
+        # Multi-threading support
+        self.enable_multithreading = True
+        self.worker_threads = 4
+        self.physics_thread_pool = None
+        self.collision_jobs = []
+        
+        # Advanced physics island system
+        self.physics_islands = []
+        self.island_solver = None
+        
+        # GPU acceleration support (when available)
+        self.gpu_acceleration = False
+        self.compute_shaders_available = False
+        
         # Collision resolution improvements
         self.restitution_threshold = 1.0
         self.friction_combine_mode = "average"  # "average", "multiply", "min", "max"
