@@ -13,6 +13,7 @@ from pathlib import Path
 import traceback
 import threading
 import time
+import math
 
 
 class ScriptManager:
@@ -284,8 +285,8 @@ class {script_name.capitalize()}(GameObject):
         
         # Example: Move in a circle
         radius = 50
-        self.transform.position.x = 400 + radius * voidray.math.cos(self.timer)
-        self.transform.position.y = 300 + radius * voidray.math.sin(self.timer)
+        self.transform.position.x = 400 + radius * math.cos(self.timer)
+        self.transform.position.y = 300 + radius * math.sin(self.timer)
     
     def on_collision(self, other):
         """Called when this object collides with another."""

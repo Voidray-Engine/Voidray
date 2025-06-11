@@ -21,16 +21,33 @@ class PhysicsEngine:
         self.colliders: List[Collider] = []
         self.collision_callbacks: List[Callable[[Collider, Collider, Dict[str, Any]], None]] = []
         
-        # Advanced spatial partitioning
+        # Advanced spatial partitioning with quadtree
         self.spatial_grid_size = 64.0
         self.spatial_grid: Dict[Tuple[int, int], List[Collider]] = {}
+        self.use_quadtree = True
+        self.quadtree = None
+        self.world_bounds = (-10000, -10000, 20000, 20000)
         
         # Performance optimizations
         self.max_velocity = 2000.0
         self.time_scale = 1.0
-        self.collision_iterations = 2
+        self.collision_iterations = 4  # Increased for better accuracy
         self.position_correction_percent = 0.8
         self.penetration_slop = 0.01
+        
+        # Advanced physics features
+        self.enable_sub_stepping = True
+        self.sub_steps = 2
+        self.velocity_solver_iterations = 8
+        self.position_solver_iterations = 3
+        
+        # Material system
+        self.material_combinations: Dict[Tuple[str, str], Dict[str, float]] = {}
+        self.default_material = {
+            'friction': 0.5,
+            'restitution': 0.3,
+            'density': 1.0
+        }
         
         # Advanced features
         self.enable_continuous_collision = True
@@ -293,14 +310,45 @@ class PhysicsEngine:
         return True
 
     def _get_enhanced_collision_info(self, collider1: Collider, collider2: Collider) -> Optional[Dict[str, Any]]:
-        """Get enhanced collision information."""
-        collision_info = collider1.get_collision_info(collider2)
+        """Get enhanced collision information with backward compatibility."""
+        try:
+            # Try new method first
+            if hasattr(collider1, 'get_collision_info'):
+                collision_info = collider1.get_collision_info(collider2)
+            else:
+                # Fallback for older colliders
+                collision_info = self._basic_collision_check(collider1, collider2)
+            
+            if collision_info and self.enable_continuous_collision:
+                # Add continuous collision detection data
+                collision_info.update(self._get_continuous_collision_info(collider1, collider2))
+            
+            return collision_info
+        except Exception as e:
+            print(f"Collision detection error: {e}")
+            return None
+    
+    def _basic_collision_check(self, collider1: Collider, collider2: Collider) -> Optional[Dict[str, Any]]:
+        """Basic collision check for backward compatibility."""
+        if not collider1.game_object or not collider2.game_object:
+            return None
         
-        if collision_info and self.enable_continuous_collision:
-            # Add continuous collision detection data
-            collision_info.update(self._get_continuous_collision_info(collider1, collider2))
+        pos1 = collider1.game_object.transform.position
+        pos2 = collider2.game_object.transform.position
         
-        return collision_info
+        # Simple distance-based collision
+        distance = (pos1 - pos2).magnitude()
+        combined_radius = getattr(collider1, 'radius', 32) + getattr(collider2, 'radius', 32)
+        
+        if distance <= combined_radius:
+            normal = (pos1 - pos2).normalized() if distance > 0 else Vector2(1, 0)
+            return {
+                'normal': normal,
+                'penetration': combined_radius - distance,
+                'contact_point': pos2 + normal * getattr(collider2, 'radius', 32)
+            }
+        
+        return None
 
     def _get_continuous_collision_info(self, collider1: Collider, collider2: Collider) -> Dict[str, Any]:
         """Calculate continuous collision detection information."""
