@@ -73,6 +73,15 @@ class Advanced2DRenderer:
         self.height = screen.get_height()
         self.camera_offset = Vector2(0, 0)
         self.background_color = Color.BLACK
+        
+        # Enhanced culling system
+        self.frustum_culling_enabled = True
+        self.culling_margin = 100  # Extra pixels around screen for culling
+        
+        # Improved batching
+        self.max_batch_size = 2000
+        self.texture_batches = {}
+        self.geometry_batch = []
 
         # 2.5D rendering properties
         self.camera_height = 32.0
@@ -80,6 +89,25 @@ class Advanced2DRenderer:
         self.field_of_view = 60.0
         self.render_distance = 1000.0
         self.fog_distance = 500.0
+        
+        # Batch rendering system
+        self.sprite_batches: Dict[str, List] = {}
+        self.batch_size_limit = 1000
+        self.enable_batching = True
+        
+        # Advanced rendering features
+        self.render_layers: Dict[int, List] = {}
+        self.post_processing_effects = []
+        self.bloom_enabled = False
+        self.ssao_enabled = False
+        
+        # Performance tracking
+        self.draw_calls_this_frame = 0
+        self.vertices_rendered = 0
+        
+        # Multi-threading support
+        self.enable_threaded_rendering = True
+        self.render_queue = []
 
         # Texture management
         self.texture_atlas = TextureAtlas()
@@ -612,6 +640,46 @@ class Advanced2DRenderer:
             'sectors': len(self.sectors),
             'lights': len(self.light_sources)
         }
+    
+    def is_object_in_view(self, position: Vector2, size: Vector2) -> bool:
+        """Check if object is within camera view for frustum culling."""
+        if not self.frustum_culling_enabled:
+            return True
+        
+        screen_pos = self.world_to_screen(position)
+        
+        # Check if object is within extended screen bounds
+        return (screen_pos.x + size.x >= -self.culling_margin and
+                screen_pos.x <= self.width + self.culling_margin and
+                screen_pos.y + size.y >= -self.culling_margin and
+                screen_pos.y <= self.height + self.culling_margin)
+    
+    def add_to_batch(self, texture_key: str, draw_call):
+        """Add drawing operation to batch for efficient rendering."""
+        if texture_key not in self.texture_batches:
+            self.texture_batches[texture_key] = []
+        
+        self.texture_batches[texture_key].append(draw_call)
+        
+        # Auto-flush if batch gets too large
+        if len(self.texture_batches[texture_key]) >= self.max_batch_size:
+            self.flush_texture_batch(texture_key)
+    
+    def flush_texture_batch(self, texture_key: str):
+        """Flush a specific texture batch."""
+        if texture_key in self.texture_batches:
+            for draw_call in self.texture_batches[texture_key]:
+                draw_call()
+            self.texture_batches[texture_key].clear()
+    
+    def flush_all_batches(self):
+        """Flush all rendering batches."""
+        for texture_key in list(self.texture_batches.keys()):
+            self.flush_texture_batch(texture_key)
+        
+        # Flush sprite batch if exists
+        if hasattr(self, '_sprite_batch'):
+            self.flush_sprite_batch()
 
     # Standard 2D rendering methods (backward compatibility)
     def draw_rect(self, position: Vector2, size: Vector2, 

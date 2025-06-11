@@ -177,7 +177,8 @@ class AssetLoader:
             return AssetMetadata(asset_type, file_path, 0, 0)
 
     def load_image(self, name: str, filename: str, convert_alpha: bool = None,
-                   scale: Tuple[int, int] = None, streaming: bool = False, fallback_color: tuple = (255, 0, 255)) -> pygame.Surface:
+                   scale: Tuple[int, int] = None, streaming: bool = False, 
+                   fallback_color: tuple = (255, 0, 255), validate: bool = True) -> pygame.Surface:
         """
         Load an image with enhanced options.
 
@@ -205,6 +206,11 @@ class AssetLoader:
         metadata = self._get_file_metadata(file_path, "image")
 
         try:
+            # Validate image file if requested
+            if validate and not self._validate_image_file(file_path):
+                print(f"Image validation failed: {filename}")
+                return self._create_placeholder_image(name, scale or (32, 32))
+            
             # Handle streaming for large images
             if streaming and metadata.size > 2 * 1024 * 1024:  # > 2MB
                 print(f"Streaming large image: {filename}")
@@ -734,3 +740,116 @@ class AssetLoader:
         self.metadata.clear()
 
         print("All assets cleared from memory")
+    
+    def _validate_image_file(self, file_path: str) -> bool:
+        """Validate image file integrity."""
+        try:
+            # Check file size
+            file_size = os.path.getsize(file_path)
+            if file_size == 0:
+                return False
+            
+            # Check if file can be opened as image
+            test_surface = pygame.image.load(file_path)
+            if test_surface.get_width() == 0 or test_surface.get_height() == 0:
+                return False
+                
+            return True
+        except Exception:
+            return False
+    
+    def validate_all_assets(self) -> Dict[str, List[str]]:
+        """Validate all loaded assets and report issues."""
+        issues = {
+            'corrupted_images': [],
+            'missing_sounds': [],
+            'invalid_data': [],
+            'memory_warnings': []
+        }
+        
+        # Check images
+        for name, surface in self.images.items():
+            if not surface or surface.get_width() == 0 or surface.get_height() == 0:
+                issues['corrupted_images'].append(name)
+        
+        # Check sounds
+        for name, sound in self.sounds.items():
+            if not sound:
+                issues['missing_sounds'].append(name)
+        
+        # Check data files
+        for name, data in self.data.items():
+            if data is None:
+                issues['invalid_data'].append(name)
+        
+        # Memory usage warnings
+        total_assets = len(self.images) + len(self.sounds) + len(self.data)
+        if total_assets > self.cache.max_size * 0.9:
+            issues['memory_warnings'].append(f"High asset count: {total_assets}")
+        
+        return issues
+    
+    def create_asset_manifest(self, output_path: str = "asset_manifest.json"):
+        """Create a manifest of all loaded assets."""
+        manifest = {
+            'created_at': time.time(),
+            'engine_version': '3.0.5',
+            'assets': {
+                'images': {
+                    name: {
+                        'size': surface.get_size(),
+                        'format': 'RGBA' if surface.get_flags() & pygame.SRCALPHA else 'RGB'
+                    } for name, surface in self.images.items()
+                },
+                'sounds': {
+                    name: {
+                        'length': sound.get_length() if hasattr(sound, 'get_length') else 0
+                    } for name, sound in self.sounds.items() if sound
+                },
+                'data': {
+                    name: {
+                        'type': type(data).__name__,
+                        'size': len(str(data)) if data else 0
+                    } for name, data in self.data.items()
+                }
+            },
+            'statistics': self.get_memory_usage()
+        }
+        
+        try:
+            with open(output_path, 'w') as f:
+                json.dump(manifest, f, indent=2)
+            print(f"Asset manifest created: {output_path}")
+        except Exception as e:
+            print(f"Failed to create asset manifest: {e}")
+    
+    def preload_essential_assets(self):
+        """Preload essential game assets for better performance."""
+        essential_assets = {
+            'ui': {
+                'images': {
+                    'button': 'ui/button.png',
+                    'panel': 'ui/panel.png'
+                },
+                'sounds': {
+                    'click': 'ui/click.wav',
+                    'hover': 'ui/hover.wav'
+                }
+            },
+            'effects': {
+                'images': {
+                    'particle': 'effects/particle.png',
+                    'explosion': 'effects/explosion.png'
+                },
+                'sounds': {
+                    'explosion': 'effects/explosion.wav'
+                }
+            }
+        }
+        
+        for pack_name, pack_data in essential_assets.items():
+            try:
+                self.preload_asset_pack(pack_name, pack_data)
+                print(f"Essential assets '{pack_name}' preloaded")
+            except Exception as e:
+                print(f"Failed to preload essential assets '{pack_name}': {e}")

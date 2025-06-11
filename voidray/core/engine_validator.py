@@ -150,10 +150,15 @@ class EngineValidator:
             try:
                 # Test resource manager
                 memory_usage = self.engine.resource_manager.get_memory_usage()
-                if not isinstance(memory_usage, dict):
-                    errors.append("Resource manager get_memory_usage() should return a dictionary")
-                elif memory_usage.get('total_memory_mb', 0) < 0:
-                    errors.append("Invalid resource manager memory usage")
+                # Accept both dict and numeric returns for backward compatibility
+                if isinstance(memory_usage, dict):
+                    if memory_usage.get('total_memory_mb', 0) < 0:
+                        errors.append("Invalid resource manager memory usage")
+                elif isinstance(memory_usage, (int, float)):
+                    if memory_usage < 0:
+                        errors.append("Invalid resource manager memory usage")
+                else:
+                    errors.append("Resource manager get_memory_usage() should return a dictionary or number")
             except Exception as e:
                 errors.append(f"Resource manager test failed: {e}")
         
@@ -187,11 +192,20 @@ class EngineValidator:
             
             # Check memory usage
             if hasattr(self.engine, 'resource_manager') and self.engine.resource_manager:
-                memory_usage = self.engine.resource_manager.get_memory_usage()
-                results['memory_usage_mb'] = memory_usage / 1024 / 1024
-                
-                if results['memory_usage_mb'] > 500:
-                    results['warnings'].append(f"High memory usage: {results['memory_usage_mb']:.1f}MB")
+                try:
+                    memory_usage = self.engine.resource_manager.get_memory_usage()
+                    if isinstance(memory_usage, dict):
+                        memory_mb = memory_usage.get('total_memory_mb', 0)
+                    else:
+                        memory_mb = memory_usage / 1024 / 1024
+                    
+                    results['memory_usage_mb'] = memory_mb
+                    
+                    if memory_mb > 500:
+                        results['warnings'].append(f"High memory usage: {memory_mb:.1f}MB")
+                except Exception as e:
+                    results['warnings'].append(f"Could not check memory usage: {e}")
+                    results['memory_usage_mb'] = 0
         
         except Exception as e:
             results['warnings'].append(f"Performance check error: {e}")

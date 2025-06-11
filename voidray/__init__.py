@@ -45,6 +45,18 @@ from .core.scene_transitions import SceneTransition, TransitionType
 # Global engine instance
 _engine = None
 
+# Engine version for compatibility
+__version__ = "3.2"
+__compatible_versions__ = ["2.5", "3.0", "3.1"]
+
+def get_version():
+    """Get engine version."""
+    return __version__
+
+def is_compatible(version: str) -> bool:
+    """Check if a game version is compatible with this engine."""
+    return version in __compatible_versions__ or version == __version__
+
 
 def configure(width: int = 800,
               height: int = 600,
@@ -114,7 +126,7 @@ def get_scene():
 
 
 # Version info
-__version__ = "3.0.5"
+__version__ = "3.2-stable"
 __author__ = "VoidRay Team"
 
 # Main exports

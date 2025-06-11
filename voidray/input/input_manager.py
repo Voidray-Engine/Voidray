@@ -115,9 +115,28 @@ class InputManager:
         self.mouse_buttons_just_released: Set[int] = set()
         self.mouse_wheel_delta = 0
         
+        # Gamepad state
+        pygame.joystick.init()
+        self.gamepads = {}
+        self.gamepad_buttons_pressed = {}
+        self.gamepad_buttons_just_pressed = {}
+        self.gamepad_buttons_just_released = {}
+        self.gamepad_axes = {}
+        
+        # Initialize connected gamepads
+        for i in range(pygame.joystick.get_count()):
+            gamepad = pygame.joystick.Joystick(i)
+            gamepad.init()
+            self.gamepads[i] = gamepad
+            self.gamepad_buttons_pressed[i] = set()
+            self.gamepad_buttons_just_pressed[i] = set()
+            self.gamepad_buttons_just_released[i] = set()
+            self.gamepad_axes[i] = {}
+        
         # Previous frame state for comparison
         self._prev_keys_pressed: Set[int] = set()
         self._prev_mouse_buttons_pressed: Set[int] = set()
+        self._prev_gamepad_buttons_pressed = {}
     
     def handle_event(self, event: pygame.event.Event):
         """
@@ -301,3 +320,28 @@ class InputManager:
             Wheel delta (positive for up, negative for down)
         """
         return self.mouse_wheel_delta
+    
+    # Gamepad methods
+    def is_gamepad_button_pressed(self, gamepad_id: int, button: int) -> bool:
+        """Check if a gamepad button is pressed."""
+        return gamepad_id in self.gamepad_buttons_pressed and button in self.gamepad_buttons_pressed[gamepad_id]
+    
+    def is_gamepad_button_just_pressed(self, gamepad_id: int, button: int) -> bool:
+        """Check if a gamepad button was just pressed."""
+        return gamepad_id in self.gamepad_buttons_just_pressed and button in self.gamepad_buttons_just_pressed[gamepad_id]
+    
+    def get_gamepad_axis(self, gamepad_id: int, axis: int) -> float:
+        """Get gamepad axis value (-1 to 1)."""
+        if gamepad_id in self.gamepad_axes and axis in self.gamepad_axes[gamepad_id]:
+            return self.gamepad_axes[gamepad_id][axis]
+        return 0.0
+    
+    def get_gamepad_movement_vector(self, gamepad_id: int = 0) -> Vector2:
+        """Get movement vector from gamepad left stick."""
+        x = self.get_gamepad_axis(gamepad_id, 0)  # Left stick X
+        y = self.get_gamepad_axis(gamepad_id, 1)  # Left stick Y
+        return Vector2(x, y)
+    
+    def get_connected_gamepads(self) -> list:
+        """Get list of connected gamepad IDs."""
+        return list(self.gamepads.keys())
