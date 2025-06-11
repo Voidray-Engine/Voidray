@@ -310,7 +310,7 @@ if __name__ == "__main__":
 ## 🏗️ Advanced Engine Architecture
 
 ```
-VoidRay 2.5.4-stable Engine
+VoidRay 3 Engine
 ├── 🎮 Core Systems
 │   ├── Advanced Scene Management
 │   ├── Component-Based Architecture (ECS)
