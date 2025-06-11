@@ -3,7 +3,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![License](https://img.shields.io/badge/license-GPL--3.0-red)
-![Version](https://img.shields.io/badge/version-3--stable-green)
+![Version](https://img.shields.io/badge/version-3-green)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
 A **professional** 2D/2.5D game engine built with Python and Pygame. VoidRay provides the core infrastructure and tools needed to build any type of game, while giving developers complete control over their game logic and mechanics.
